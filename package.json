@@ -1,0 +1,17 @@
+{
+  "name": "calculator-for-bung",
+  "version": "1.0.0",
+  "description": "모임 차수별 벙비 정산 계산기",
+  "main": "app.js",
+  "scripts": {
+    "start": "npx -y http-server -p 8888 -c-1",
+    "serve": "npx -y serve -l 8888"
+  },
+  "keywords": [
+    "calculator",
+    "dutch-pay",
+    "settlement"
+  ],
+  "author": "",
+  "license": "MIT"
+}

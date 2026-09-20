@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>벙비 계산기 - 스마트 모임 정산 & 입금 관리</title>
+  <meta name="description" content="모임 차수별 금액과 참석자를 입력하여 동일한 정산 금액 그룹으로 자동 정리하고, 카카오톡 전송 및 실시간 입금 확인까지 관리하는 스마트 벙비 계산기입니다.">
+  
+  <!-- Pretendard & Inter Webfonts -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css?v=20260915b">
+</head>
+<body>
+  <!-- Ambient Clean Dot Grid -->
+  <div class="bg-grid-pattern" aria-hidden="true"></div>
+
+  <div class="app-container">
+    <!-- Top Navigation Bar -->
+    <nav class="top-nav">
+      <div class="nav-brand">
+        <span class="logo-emoji">⚡</span>
+        <span class="brand-name">벙비 계산기</span>
+      </div>
+      <div class="nav-actions">
+        <button type="button" id="new-meeting-btn" class="btn btn-nav" title="새로운 모임 정산 시작">
+          <svg class="btn-icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span class="nav-btn-text">새 벙 시작</span>
+          <span class="nav-btn-text-short">새 벙</span>
+        </button>
+        <button type="button" id="import-text-btn" class="btn btn-nav btn-nav-import" title="카톡 정산 텍스트를 붙여넣어 자동으로 불러옵니다">
+          <svg class="btn-icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+            <path d="M9 14l2 2 4-4"></path>
+          </svg>
+          <span class="nav-btn-text">텍스트로 불러오기</span>
+          <span class="nav-btn-text-short">불러오기</span>
+        </button>
+        <button type="button" id="open-history-btn" class="btn btn-nav btn-nav-history" title="이전 정산 내역 보관함 열기">
+          <svg class="btn-icon-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          <span class="nav-btn-text">이전 정산 내역</span>
+          <span class="nav-btn-text-short">보관함</span>
+          <span class="history-count-pill" id="history-count-pill">0</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Meeting Title & Action Bar -->
+    <section class="meeting-bar-card" aria-label="현재 모임 정보">
+      <div class="meeting-main-row">
+        <div class="meeting-input-wrap">
+          <span class="meeting-input-icon">📋</span>
+          <input type="text" id="meeting-title-input" class="meeting-title-input" placeholder="모임 이름을 입력하세요 (예: 9월 11일 강남 불금벙)">
+        </div>
+        <button type="button" id="save-history-btn" class="btn btn-save" title="현재 입력된 차수, 금액, 입금 상태를 이전 보관함에 안전하게 저장합니다">
+          <svg class="btn-icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+          <span>현재 정산 내역 저장</span>
+        </button>
+      </div>
+      <p class="meeting-helper-text">
+        💡 <strong>[현재 정산 내역 저장]</strong>을 누르면 보관함에 기록 후 화면이 초기화됩니다. 이미 계산된 카톡 정산글이 있다면? <button type="button" id="inline-import-btn" class="btn-inline-link">텍스트로 불러오기</button>
+      </p>
+    </section>
+
+    <!-- Main Workspace -->
+    <main class="app-main">
+      <!-- Left Column: Rounds Input List -->
+      <section class="rounds-section" aria-label="차수별 지출 및 참석자 입력">
+        <div class="section-title-row">
+          <h2 class="section-heading">차수별 지출 내역</h2>
+          <span class="section-badge" id="rounds-count-badge">1개 차수</span>
+        </div>
+
+        <div id="rounds-container" class="rounds-list">
+          <!-- Dynamically injected via app.js -->
+        </div>
+        
+        <div class="rounds-actions">
+          <button type="button" id="add-round-btn" class="btn btn-primary add-round-btn">
+            <svg class="btn-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>차수 추가하기</span>
+          </button>
+          <button type="button" id="reset-all-btn" class="btn btn-ghost reset-all-btn" title="현재 입력 내용 초기화">
+            <svg class="btn-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+              <path d="M3 3v5h5"></path>
+            </svg>
+            <span>전체 초기화</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Right Column: Settings, Receipt & Payment Tracker -->
+      <section class="results-section" aria-label="정산 옵션 및 결과">
+        <!-- Settings Card -->
+        <div class="card settings-card">
+          <div class="card-header">
+            <h3 class="card-title">
+              <svg class="card-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+              <span>정산 옵션</span>
+            </h3>
+          </div>
+          
+          <div class="form-group">
+            <label for="bank-info">입금 계좌 정보</label>
+            <input type="text" id="bank-info" placeholder="예: 토스뱅크 1000-0000-0000 홍길동" value="기업은행 425-016501-01-019 ㄱㅅㅎ">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="operating-fee">운영비 (1인 1회)</label>
+              <div class="input-unit-wrapper">
+                <input type="number" id="operating-fee" min="0" step="500" value="0" placeholder="0">
+                <span class="input-unit">원</span>
+              </div>
+            </div>
+            
+            <div class="form-group half">
+              <label for="round-rule">절사 단위</label>
+              <select id="round-rule">
+                <option value="floor" selected>원 단위 버림</option>
+                <option value="floor10">10원 단위 버림</option>
+                <option value="round">반올림</option>
+                <option value="ceil">올림</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- KakaoTalk Receipt Preview Card -->
+        <div class="card receipt-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h3 class="card-title">
+                <svg class="card-icon kakao-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <path d="M12 3C6.477 3 2 6.477 2 10.765c0 2.76 1.848 5.184 4.673 6.556l-.973 3.596a.5.5 0 0 0 .736.545l4.316-2.853c.404.037.82.056 1.248.056 5.523 0 10-3.477 10-7.765C22 6.477 17.523 3 12 3z"/>
+                </svg>
+                <span>카톡 공유 메시지</span>
+              </h3>
+              <span class="card-sub-badge">실시간 생성</span>
+            </div>
+          </div>
+
+          <div class="receipt-bubble-container">
+            <pre id="result-text" class="receipt-pre" aria-label="정산 메시지 결과"></pre>
+          </div>
+          
+          <button type="button" id="copy-btn" class="btn btn-kakao copy-btn">
+            <svg class="btn-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span>카카오톡 정산 텍스트 복사</span>
+          </button>
+        </div>
+
+        <!-- Payment Tracker Card -->
+        <div class="card payment-tracker-card" id="payment-tracker-card" style="display: none;">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h3 class="card-title">
+                <svg class="card-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                <span>입금 확인 관리</span>
+              </h3>
+            </div>
+            <span class="payment-rate-badge" id="payment-rate-badge">0%</span>
+          </div>
+
+          <!-- Progress bar & metrics -->
+          <div class="payment-summary">
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+            <div class="payment-stats">
+              <span class="stat-count" id="payment-count-stat">입금 0 / 0명</span>
+              <span class="stat-unpaid" id="unpaid-amount-stat">남은 미수금: 0원</span>
+            </div>
+          </div>
+
+          <div class="payment-list-tip">
+            <span>💡 멤버 카드를 터치하면 입금 완료 상태로 바뀝니다</span>
+          </div>
+
+          <!-- Members Grid -->
+          <div class="payment-members-list" id="payment-members-list">
+            <!-- Injected by app.js -->
+          </div>
+
+          <!-- Reminder Action Button -->
+          <button type="button" id="copy-unpaid-btn" class="btn btn-warning copy-unpaid-btn">
+            <svg class="btn-icon-svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span>미입금자 독촉 텍스트 복사</span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Global Toast Notification -->
+    <div id="toast" class="toast" role="alert" aria-live="polite">
+      <svg class="toast-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      <span id="toast-message">클립보드에 복사되었습니다!</span>
+    </div>
+
+    <!-- Smart Import Modal & Backdrop -->
+    <div id="import-modal-backdrop" class="modal-backdrop" aria-hidden="true"></div>
+    <div id="import-modal" class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon-badge">📋</span>
+          <div>
+            <h3 id="import-modal-title" class="modal-title">카톡 정산 텍스트 불러오기</h3>
+            <p class="modal-subtitle">카톡이나 메모장의 정산 텍스트를 붙여넣으면 차수, 금액, 참석자, 계좌를 자동 인식합니다.</p>
+          </div>
+        </div>
+        <button type="button" id="close-import-modal-btn" class="modal-close-btn" aria-label="창 닫기">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="import-textarea-wrap">
+          <textarea id="import-text-input" class="import-textarea" rows="8" placeholder="카카오톡이나 메모장의 정산 메시지를 여기에 붙여넣으세요...&#10;&#10;[예시]&#10;[1차]&#10;총 295,000원 / 9명&#10;참가자: 건우, 뚜뚜, 사탕, 설이, 승환, 유리, 하미, 해일, 이수&#10;&#10;[2차]&#10;총 209,200원 / 12명&#10;참가자: 건우, 뚜뚜, 사탕, 라이, 오징, 원이...&#10;&#10;425-016501-01-019 기업 ㄱㅅㅎ"></textarea>
+        </div>
+
+        <!-- Live Analysis Preview -->
+        <div id="import-preview-box" class="import-preview-box" style="display: none;">
+          <div class="preview-header">
+            <span class="preview-tag">⚡ 실시간 분석 결과</span>
+            <span class="preview-status" id="preview-status-text">분석 중...</span>
+          </div>
+          <div class="preview-content" id="preview-content-details">
+            <!-- Dynamically injected -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="cancel-import-btn" class="btn btn-ghost">취소</button>
+        <button type="button" id="apply-import-btn" class="btn btn-primary btn-import-apply" disabled>
+          <svg class="btn-icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span>계산기에 적용 & 입금 관리 시작</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- History Drawer & Backdrop -->
+    <div id="history-backdrop" class="history-backdrop" aria-hidden="true"></div>
+    <aside id="history-drawer" class="history-drawer" role="dialog" aria-modal="true" aria-label="이전 정산 내역 보관함">
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <svg class="drawer-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          <h2 class="drawer-title">이전 정산 내역 보관함</h2>
+          <span class="drawer-count-badge" id="drawer-count-badge">0</span>
+        </div>
+        <button type="button" id="close-drawer-btn" class="drawer-close-btn" aria-label="보관함 닫기">&times;</button>
+      </div>
+
+      <div class="drawer-body">
+        <div id="history-list" class="history-list">
+          <!-- Dynamically populated via JS -->
+        </div>
+      </div>
+    </aside>
+
+    <!-- App Footer -->
+    <footer class="app-footer">
+      <p>벙비 계산기 &bull; 모임 총무를 위한 스마트 정산 도구</p>
+    </footer>
+  </div>
+
+  <script src="app.js?v=20260915b"></script>
+</body>
+</html>
