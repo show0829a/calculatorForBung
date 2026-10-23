@@ -479,6 +479,146 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+/* ==========================================================================
+   Host (Bung-ju) & Host Support Section Styles
+   ========================================================================== */
+.host-settings-card {
+  margin-top: 1.1rem;
+  padding: 0.9rem;
+  background: rgba(245, 158, 11, 0.04);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.host-settings-card:hover {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.host-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+.host-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.host-crown-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.host-title-text {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.btn-host-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-host-toggle:hover {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fef08a;
+}
+
+.btn-host-toggle.is-active {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.35));
+  border-color: #f59e0b;
+  color: #fffbeb;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+}
+
+.host-toggle-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text-muted);
+}
+
+.btn-host-toggle.is-active .host-toggle-badge {
+  background: #f59e0b;
+  color: #0f172a;
+}
+
+.host-quick-pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+
+.host-pills-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-right: 0.1rem;
+}
+
+.host-quick-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.host-quick-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+}
+
+.host-quick-pill.active {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: #f59e0b;
+  color: #fef08a;
+  font-weight: 700;
+}
+
+.host-benefit-banner {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: #fef3c7;
+  line-height: 1.45;
+  animation: fadeIn 0.2s ease-in;
+}
+
+.host-benefit-banner strong {
+  color: #fbbf24;
+}
+
+
 /* Left Section: Rounds List */
 .rounds-list {
   display: flex;
@@ -590,6 +730,47 @@ input[type="number"] {
   font-weight: 600;
   color: #f1f5f9;
   user-select: none;
+  transition: all var(--transition-fast);
+}
+
+/* Host Chip Variant */
+.chip.is-host {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(217, 119, 6, 0.25));
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #fef08a;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.15);
+}
+
+.chip-crown-btn {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.15rem;
+  opacity: 0.45;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chip:hover .chip-crown-btn {
+  opacity: 0.85;
+}
+
+.chip-crown-btn:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.chip.is-host .chip-crown-btn {
+  opacity: 1;
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.8));
+}
+
+.chip-name {
+  line-height: 1.2;
 }
 
 .chip-delete {
@@ -935,6 +1116,18 @@ input[type="number"] {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.member-host-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--radius-sm);
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  flex-shrink: 0;
+  letter-spacing: -0.02em;
 }
 
 .member-status-badge {

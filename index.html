@@ -175,6 +175,47 @@
               </select>
             </div>
           </div>
+
+          <!-- Host (Bung-ju) & Host Support Section -->
+          <div class="host-settings-card">
+            <div class="host-settings-header">
+              <div class="host-title-wrap">
+                <span class="host-crown-icon">👑</span>
+                <span class="host-title-text">벙주 (주최자) & 지원금</span>
+              </div>
+              <button type="button" id="host-support-toggle-btn" class="btn-host-toggle" title="벙주 지원금 1,000원 원클릭 On/Off">
+                <span>👑 벙주 지원</span>
+                <span id="host-toggle-badge" class="host-toggle-badge">OFF</span>
+              </button>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group half">
+                <label for="host-select">벙주 선택</label>
+                <select id="host-select">
+                  <option value="">(벙주 미지정)</option>
+                </select>
+              </div>
+              
+              <div class="form-group half">
+                <label for="host-support-fee">1인당 지원금 (1회)</label>
+                <div class="input-unit-wrapper">
+                  <input type="number" id="host-support-fee" min="0" step="500" value="0" placeholder="0">
+                  <span class="input-unit">원</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="host-quick-pills">
+              <span class="host-pills-label">지원금:</span>
+              <button type="button" class="host-quick-pill active" data-amount="0">0원 (OFF)</button>
+              <button type="button" class="host-quick-pill" data-amount="1000">+1,000원</button>
+              <button type="button" class="host-quick-pill" data-amount="2000">+2,000원</button>
+              <button type="button" class="host-quick-pill" data-amount="3000">+3,000원</button>
+            </div>
+
+            <div id="host-benefit-banner" class="host-benefit-banner" style="display: none;"></div>
+          </div>
         </div>
 
         <!-- KakaoTalk Receipt Preview Card -->

@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
     meetingTitle: getDefaultMeetingTitle(),
     rounds: [], // { id, name, amount, addedAttendees: [], removedAttendees: [] }
     operatingFee: 0,
+    hostName: '', // Name of gathering host (벙주)
+    hostSupportFee: 0, // Support fee per non-host attendee (e.g. 1000)
     roundRule: 'floor',
     bankInfo: '기업은행 425-016501-01-019 ㄱㅅㅎ',
     nextRoundId: 1,
@@ -47,6 +49,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetAllBtn = document.getElementById('reset-all-btn');
   const bankInfoInput = document.getElementById('bank-info');
   const operatingFeeInput = document.getElementById('operating-fee');
+  const hostSelect = document.getElementById('host-select');
+  const hostSupportFeeInput = document.getElementById('host-support-fee');
+  const hostSupportToggleBtn = document.getElementById('host-support-toggle-btn');
+  const hostToggleBadge = document.getElementById('host-toggle-badge');
+  const hostBenefitBanner = document.getElementById('host-benefit-banner');
+  const hostQuickPills = document.querySelectorAll('.host-quick-pill');
   const roundRuleSelect = document.getElementById('round-rule');
   const resultTextElement = document.getElementById('result-text');
   const copyBtn = document.getElementById('copy-btn');
@@ -86,6 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
         meetingTitle: state.meetingTitle,
         rounds: state.rounds,
         operatingFee: state.operatingFee,
+        hostName: state.hostName,
+        hostSupportFee: state.hostSupportFee,
         roundRule: state.roundRule,
         bankInfo: state.bankInfo,
         paidAttendees: state.paidAttendees
@@ -107,6 +117,8 @@ document.addEventListener('DOMContentLoaded', () => {
       state.meetingTitle = data.meetingTitle || getDefaultMeetingTitle();
       state.rounds = data.rounds;
       state.operatingFee = data.operatingFee || 0;
+      state.hostName = data.hostName || '';
+      state.hostSupportFee = data.hostSupportFee || 0;
       state.roundRule = data.roundRule || 'floor';
       state.bankInfo = data.bankInfo !== undefined ? data.bankInfo : '기업은행 425-016501-01-019 ㄱㅅㅎ';
       state.paidAttendees = data.paidAttendees || {};
@@ -115,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
       meetingTitleInput.value = state.meetingTitle;
       bankInfoInput.value = state.bankInfo;
       operatingFeeInput.value = state.operatingFee;
+      if (hostSupportFeeInput) hostSupportFeeInput.value = state.hostSupportFee;
       roundRuleSelect.value = state.roundRule;
       return true;
     } catch (e) {
@@ -172,6 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     state.operatingFee = 0;
+    state.hostName = '';
+    state.hostSupportFee = 0;
     state.roundRule = 'floor';
     state.bankInfo = '기업은행 425-016501-01-019 ㄱㅅㅎ';
     state.paidAttendees = {};
@@ -183,6 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sync Inputs
     bankInfoInput.value = state.bankInfo;
     operatingFeeInput.value = state.operatingFee;
+    if (hostSupportFeeInput) hostSupportFeeInput.value = state.hostSupportFee;
     roundRuleSelect.value = state.roundRule;
 
     renderRounds();
@@ -333,9 +349,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const roundAttendees = getRoundAttendees(roundId);
 
     roundAttendees.forEach(name => {
+      const isHost = (name === state.hostName);
       const chip = document.createElement('span');
-      chip.className = 'chip';
-      chip.textContent = name;
+      chip.className = `chip ${isHost ? 'is-host' : ''}`;
+
+      // Crown button to toggle 벙주 (주최자)
+      const crownBtn = document.createElement('button');
+      crownBtn.type = 'button';
+      crownBtn.className = 'chip-crown-btn';
+      crownBtn.textContent = '👑';
+      crownBtn.title = isHost ? '👑 벙주 해제' : `👑 ${name}님을 벙주로 지정`;
+      crownBtn.setAttribute('aria-label', crownBtn.title);
+      crownBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (state.hostName === name) {
+          state.hostName = '';
+        } else {
+          state.hostName = name;
+          // If support fee is currently 0, activate default 1,000원
+          if (!state.hostSupportFee || state.hostSupportFee === 0) {
+            state.hostSupportFee = 1000;
+          }
+        }
+        renderRounds();
+        calculateAndRenderResults();
+      });
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'chip-name';
+      nameSpan.textContent = name;
 
       const deleteBtn = document.createElement('button');
       deleteBtn.type = 'button';
@@ -347,6 +389,8 @@ document.addEventListener('DOMContentLoaded', () => {
         removeAttendeeFromRound(roundId, name);
       });
 
+      chip.appendChild(crownBtn);
+      chip.appendChild(nameSpan);
       chip.appendChild(deleteBtn);
       chipsContainer.appendChild(chip);
     });
@@ -521,6 +565,86 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Helper: Update Host (벙주) UI, Select Options & Benefit Banner
+  function updateHostUI(attendeeTotals) {
+    const allAttendees = getAllUniqueAttendees();
+
+    // 1. If currently selected host is not in attendees, clear hostName
+    if (state.hostName && !allAttendees.includes(state.hostName)) {
+      state.hostName = '';
+    }
+
+    // 2. Update #host-select dropdown options
+    if (hostSelect) {
+      const currentVal = state.hostName;
+      hostSelect.innerHTML = '<option value="">(벙주 미지정)</option>';
+      allAttendees.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = `👑 ${name}`;
+        if (name === currentVal) opt.selected = true;
+        hostSelect.appendChild(opt);
+      });
+      hostSelect.value = state.hostName || '';
+    }
+
+    // 3. Update hostSupportFeeInput & Toggle Button
+    if (hostSupportFeeInput) {
+      hostSupportFeeInput.value = state.hostSupportFee || 0;
+    }
+
+    const isSupportActive = (state.hostSupportFee || 0) > 0;
+    if (hostSupportToggleBtn) {
+      if (isSupportActive) {
+        hostSupportToggleBtn.classList.add('is-active');
+        if (hostToggleBadge) {
+          hostToggleBadge.textContent = 'ON';
+        }
+      } else {
+        hostSupportToggleBtn.classList.remove('is-active');
+        if (hostToggleBadge) {
+          hostToggleBadge.textContent = 'OFF';
+        }
+      }
+    }
+
+    // 4. Update Quick Pills active class
+    if (hostQuickPills) {
+      hostQuickPills.forEach(pill => {
+        const pillAmount = parseInt(pill.dataset.amount, 10);
+        if (pillAmount === (state.hostSupportFee || 0)) {
+          pill.classList.add('active');
+        } else {
+          pill.classList.remove('active');
+        }
+      });
+    }
+
+    // 5. Update Benefit Banner
+    if (hostBenefitBanner) {
+      const isHostActive = state.hostName && allAttendees.includes(state.hostName);
+      if (isHostActive && state.hostSupportFee > 0 && attendeeTotals && attendeeTotals.length > 0) {
+        const nonHostAttendees = attendeeTotals.filter(a => !a.isHost && a.rounds.length > 0);
+        const nonHostCount = nonHostAttendees.length;
+        const totalHostSupport = nonHostCount * state.hostSupportFee;
+        const hostAttendee = attendeeTotals.find(a => a.isHost);
+        const hostBase = hostAttendee ? hostAttendee.baseWithOpFee : 0;
+        const hostFinal = hostAttendee ? hostAttendee.amount : 0;
+
+        hostBenefitBanner.style.display = 'block';
+        hostBenefitBanner.innerHTML = `
+          👑 <strong>벙주 [${state.hostName}]</strong>님 지원 혜택 (옵션 A 적용):<br>
+          참석자 ${nonHostCount}명 × ${formatMoney(state.hostSupportFee)}원 = <strong>총 ${formatMoney(totalHostSupport)}원 할인</strong>
+          <span style="display:block; margin-top:2px; font-size:0.75rem; color:#fde68a;">
+            (원래 본인 몫 ${formatMoney(hostBase)}원 → 지원 차감 후 최종 ${formatMoney(hostFinal)}원 결제)
+          </span>
+        `;
+      } else {
+        hostBenefitBanner.style.display = 'none';
+      }
+    }
+  }
+
   // ==========================================================================
   // Core Calculation & Output
   // ==========================================================================
@@ -565,32 +689,65 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 2. Aggregate final totals per attendee
+    const isHostActive = !!(state.hostName && allAttendees.includes(state.hostName));
+    const hostFee = state.hostSupportFee || 0;
+
     const attendeeTotals = [];
     allAttendees.forEach(name => {
       const sortedParticipation = attendeeRoundCosts[name].sort((a, b) => a.roundIndex - b.roundIndex);
       const roundsNames = sortedParticipation.map(item => item.roundName);
 
       const subtotal = attendeeRoundCosts[name].reduce((acc, curr) => acc + curr.cost, 0);
-      const totalAmount = subtotal + (roundsNames.length > 0 ? state.operatingFee : 0);
+      const baseWithOpFee = subtotal + (roundsNames.length > 0 ? state.operatingFee : 0);
 
       attendeeTotals.push({
         name: name,
         rounds: roundsNames,
         originalIndices: sortedParticipation.map(item => item.roundIndex),
-        amount: totalAmount
+        subtotal: subtotal,
+        baseWithOpFee: baseWithOpFee,
+        amount: baseWithOpFee,
+        isHost: (name === state.hostName),
+        hostDiscount: 0,
+        hostSupportPaid: 0
       });
     });
+
+    // Apply Host Support (Option A: Host Discount)
+    if (isHostActive && hostFee > 0) {
+      const nonHostAttendees = attendeeTotals.filter(a => !a.isHost && a.rounds.length > 0);
+      const nonHostCount = nonHostAttendees.length;
+      const totalHostSupport = nonHostCount * hostFee;
+
+      // 1. Each non-host attendee pays hostFee once (across all rounds)
+      nonHostAttendees.forEach(a => {
+        a.hostSupportPaid = hostFee;
+        a.amount = a.baseWithOpFee + hostFee;
+      });
+
+      // 2. Host gets totalHostSupport deducted from their own bill
+      const hostAttendee = attendeeTotals.find(a => a.isHost);
+      if (hostAttendee) {
+        hostAttendee.hostDiscount = totalHostSupport;
+        const discounted = hostAttendee.baseWithOpFee - totalHostSupport;
+        hostAttendee.amount = Math.max(0, discounted);
+        hostAttendee.excessSupport = discounted < 0 ? Math.abs(discounted) : 0;
+      }
+    }
 
     latestAttendeeTotals = attendeeTotals;
 
     // 3. Group by (Rounds list pattern + Total amount)
+    // Separate Host from Non-hosts so Host line is uniquely highlighted
     const groups = {};
     attendeeTotals.forEach(item => {
       const roundsText = item.rounds.join(' + ');
-      const groupKey = `${roundsText}_${item.amount}`;
+      const groupKey = item.isHost ? `HOST_${roundsText}_${item.amount}` : `NORM_${roundsText}_${item.amount}`;
 
       if (!groups[groupKey]) {
         groups[groupKey] = {
+          isHost: item.isHost,
+          hostDiscount: item.hostDiscount,
           roundsText: roundsText,
           amount: item.amount,
           indicesKey: item.originalIndices.join(','),
@@ -615,6 +772,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return groupA.indicesKey.localeCompare(groupB.indicesKey);
       }
 
+      if (groupA.isHost !== groupB.isHost) {
+        return groupA.isHost ? 1 : -1;
+      }
+
       return groupA.amount - groupB.amount;
     });
 
@@ -622,7 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let outputText = '';
     const isSingleRound = roundDetails.length === 1;
 
-    if (isSingleRound) {
+    if (isSingleRound && (!isHostActive || hostFee === 0)) {
       const detail = roundDetails[0];
       outputText += `${detail.name}\n`;
       outputText += `${detail.attendees.join(' ')}\n`;
@@ -636,18 +797,32 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       roundDetails.forEach(detail => {
         outputText += `${detail.name}\n`;
-        outputText += `${detail.attendees.join(' ')}\n`;
+        outputText += `${detail.attendees.map(n => (isHostActive && n === state.hostName) ? `${n}(👑)` : n).join(' ')}\n`;
         outputText += `${detail.amount}/${detail.count} = ${formatMoney(detail.costPerPerson)}\n\n`;
       });
 
       if (state.operatingFee > 0) {
-        outputText += `(※ 1인당 운영비 ${formatMoney(state.operatingFee)}원이 1회 포함된 결과입니다.)\n\n`;
+        outputText += `(※ 1인당 운영비 ${formatMoney(state.operatingFee)}원이 1회 포함된 결과입니다.)\n`;
+      }
+
+      if (isHostActive && hostFee > 0) {
+        const nonHostCount = attendeeTotals.filter(a => !a.isHost && a.rounds.length > 0).length;
+        const totalHostSupport = nonHostCount * hostFee;
+        outputText += `(※ 👑 벙주 지원: 1인당 +${formatMoney(hostFee)}원 / 👑 ${state.hostName}님 -${formatMoney(totalHostSupport)}원 할인 적용)\n`;
+      }
+
+      if (state.operatingFee > 0 || (isHostActive && hostFee > 0)) {
+        outputText += '\n';
       }
 
       sortedGroupKeys.forEach(key => {
         const group = groups[key];
         if (group.names.length > 0) {
-          outputText += `${group.roundsText}: ${group.names.join(' ')} = ${formatMoney(group.amount)}\n`;
+          if (group.isHost) {
+            outputText += `👑 벙주(${group.roundsText}): ${group.names.join(' ')} = ${formatMoney(group.amount)}${group.hostDiscount > 0 ? ` (${formatMoney(group.hostDiscount)}원 지원 할인)` : ''}\n`;
+          } else {
+            outputText += `${group.roundsText}: ${group.names.join(' ')} = ${formatMoney(group.amount)}\n`;
+          }
         }
       });
     }
@@ -658,8 +833,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     resultTextElement.textContent = outputText.trim();
 
-    // 5. Update Payment Tracker Card & Save
+    // 5. Update Payment Tracker Card & Host UI & Save
     renderPaymentTracker(latestAttendeeTotals);
+    updateHostUI(latestAttendeeTotals);
     saveCurrentStateToLocalStorage();
   }
 
@@ -719,6 +895,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="member-name-wrap">
             <span class="member-avatar">${initial}</span>
             <span class="member-name">${member.name}</span>
+            ${member.isHost ? '<span class="member-host-badge">👑 벙주</span>' : ''}
           </div>
           <span class="member-status-badge">${isPaid ? '완료' : '미입금'}</span>
         </div>
@@ -785,6 +962,8 @@ document.addEventListener('DOMContentLoaded', () => {
       savedAt: formattedDate,
       rounds: JSON.parse(JSON.stringify(state.rounds)),
       operatingFee: state.operatingFee,
+      hostName: state.hostName,
+      hostSupportFee: state.hostSupportFee,
       roundRule: state.roundRule,
       bankInfo: state.bankInfo,
       paidAttendees: JSON.parse(JSON.stringify(state.paidAttendees)),
@@ -1005,6 +1184,8 @@ document.addEventListener('DOMContentLoaded', () => {
     state.meetingTitle = record.title;
     state.rounds = JSON.parse(JSON.stringify(record.rounds));
     state.operatingFee = record.operatingFee || 0;
+    state.hostName = record.hostName || '';
+    state.hostSupportFee = record.hostSupportFee || 0;
     state.roundRule = record.roundRule || 'floor';
     state.bankInfo = record.bankInfo || '기업은행 425-016501-01-019 ㄱㅅㅎ';
     state.paidAttendees = JSON.parse(JSON.stringify(record.paidAttendees || {}));
@@ -1014,6 +1195,7 @@ document.addEventListener('DOMContentLoaded', () => {
     meetingTitleInput.value = state.meetingTitle;
     bankInfoInput.value = state.bankInfo;
     operatingFeeInput.value = state.operatingFee;
+    if (hostSupportFeeInput) hostSupportFeeInput.value = state.hostSupportFee;
     roundRuleSelect.value = state.roundRule;
 
     renderRounds();
@@ -1247,10 +1429,29 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    // Host (벙주) & Host Support Detection
+    let hostName = '';
+    let hostSupportFee = 0;
+    for (const line of lines) {
+      const hostMatch = line.match(/(?:👑|벙주)\s*[:：(]?\s*([가-힣a-zA-Z0-9]+)/);
+      if (hostMatch) {
+        const found = hostMatch[1].replace(/[()]/g, '').trim();
+        if (found && !found.includes('지원') && !found.includes('정산') && !found.includes('모임')) {
+          hostName = found;
+        }
+      }
+      const supportMatch = line.match(/벙주\s*지원(?:금)?\s*[:：]?\s*(?:1인당\s*)?\+?([0-9,]+)\s*원?/);
+      if (supportMatch) {
+        hostSupportFee = parseInt(supportMatch[1].replace(/,/g, ''), 10) || 0;
+      }
+    }
+
     return {
       title: title || '',
       bankInfo: bankInfo || '',
       operatingFee: operatingFee,
+      hostName: hostName,
+      hostSupportFee: hostSupportFee,
       rounds: parsedRounds,
       attendeeTotals: attendeeTotals
     };
@@ -1495,6 +1696,13 @@ document.addEventListener('DOMContentLoaded', () => {
       state.operatingFee = currentParsedResult.operatingFee;
       operatingFeeInput.value = state.operatingFee;
     }
+    if (currentParsedResult.hostName) {
+      state.hostName = currentParsedResult.hostName;
+    }
+    if (currentParsedResult.hostSupportFee) {
+      state.hostSupportFee = currentParsedResult.hostSupportFee;
+      if (hostSupportFeeInput) hostSupportFeeInput.value = state.hostSupportFee;
+    }
 
     state.paidAttendees = {};
 
@@ -1537,6 +1745,61 @@ document.addEventListener('DOMContentLoaded', () => {
     state.operatingFee = parseInt(e.target.value) || 0;
     calculateAndRenderResults();
   });
+
+  // Host (벙주) & Support Event Listeners
+  if (hostSelect) {
+    hostSelect.addEventListener('change', (e) => {
+      state.hostName = e.target.value;
+      if (state.hostName && (!state.hostSupportFee || state.hostSupportFee === 0)) {
+        state.hostSupportFee = 1000;
+      }
+      renderRounds();
+      calculateAndRenderResults();
+    });
+  }
+
+  if (hostSupportFeeInput) {
+    hostSupportFeeInput.addEventListener('input', (e) => {
+      state.hostSupportFee = parseInt(e.target.value) || 0;
+      if (state.hostSupportFee > 0 && !state.hostName) {
+        const unique = getAllUniqueAttendees();
+        if (unique.length > 0) state.hostName = unique[0];
+      }
+      renderRounds();
+      calculateAndRenderResults();
+    });
+  }
+
+  if (hostSupportToggleBtn) {
+    hostSupportToggleBtn.addEventListener('click', () => {
+      if ((state.hostSupportFee || 0) > 0) {
+        state.hostSupportFee = 0;
+      } else {
+        state.hostSupportFee = 1000;
+        if (!state.hostName) {
+          const unique = getAllUniqueAttendees();
+          if (unique.length > 0) state.hostName = unique[0];
+        }
+      }
+      renderRounds();
+      calculateAndRenderResults();
+    });
+  }
+
+  if (hostQuickPills) {
+    hostQuickPills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        const amt = parseInt(pill.dataset.amount, 10) || 0;
+        state.hostSupportFee = amt;
+        if (amt > 0 && !state.hostName) {
+          const unique = getAllUniqueAttendees();
+          if (unique.length > 0) state.hostName = unique[0];
+        }
+        renderRounds();
+        calculateAndRenderResults();
+      });
+    });
+  }
 
   roundRuleSelect.addEventListener('change', (e) => {
     state.roundRule = e.target.value;
