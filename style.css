@@ -951,7 +951,8 @@ input[type="number"] {
   line-height: 1.6;
   color: #e2e8f0;
   white-space: pre-wrap;
-  word-break: break-all;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* Payment Tracker Card */
@@ -1026,7 +1027,7 @@ input[type="number"] {
 /* Member Checklist Items */
 .payment-members-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
   gap: 0.5rem;
   margin-bottom: 1rem;
   max-height: 250px;
@@ -1037,14 +1038,15 @@ input[type="number"] {
 .payment-member-item {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.6rem 0.75rem;
+  gap: 0.35rem;
+  padding: 0.65rem 0.75rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
   background: #141b2d;
   cursor: pointer;
   transition: transform var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
   user-select: none;
+  position: relative;
 }
 
 .payment-member-item:hover {
@@ -1077,26 +1079,39 @@ input[type="number"] {
   background: rgba(16, 185, 129, 0.12);
 }
 
+/* Host Member Card */
+.payment-member-item.is-host-item {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(16, 185, 129, 0.06));
+}
+
+.payment-member-item.is-host-item:hover {
+  border-color: rgba(245, 158, 11, 0.65);
+}
+
 .member-item-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.4rem;
 }
 
 .member-name-wrap {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.38rem;
   overflow: hidden;
+  flex: 1;
+  min-width: 0;
 }
 
 .member-avatar {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: #25334d;
   color: var(--text-primary);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -1109,6 +1124,13 @@ input[type="number"] {
   color: #ffffff;
 }
 
+.member-avatar.host-avatar {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-size: 0.75rem;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+}
+
 .member-name {
   font-size: 0.88rem;
   font-weight: 700;
@@ -1116,25 +1138,17 @@ input[type="number"] {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.member-host-badge {
-  font-size: 0.65rem;
-  font-weight: 800;
-  padding: 0.1rem 0.35rem;
-  border-radius: var(--radius-sm);
-  background: rgba(245, 158, 11, 0.2);
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  color: #fbbf24;
-  flex-shrink: 0;
-  letter-spacing: -0.02em;
+  flex: 1;
+  min-width: 0;
 }
 
 .member-status-badge {
   font-size: 0.68rem;
   font-weight: 700;
-  padding: 0.08rem 0.3rem;
+  padding: 0.1rem 0.35rem;
   border-radius: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .status-unpaid .member-status-badge {
@@ -1147,17 +1161,37 @@ input[type="number"] {
   background: var(--accent-emerald-subtle);
 }
 
+.member-amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.3rem;
+}
+
 .member-amount {
   font-size: 0.82rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 .status-paid .member-amount {
   text-decoration: line-through;
   opacity: 0.6;
   color: var(--accent-emerald);
+}
+
+.host-tag-mini {
+  font-size: 0.64rem;
+  font-weight: 800;
+  padding: 0.08rem 0.32rem;
+  border-radius: var(--radius-sm);
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Toast Notification (Refined Apple Style) */

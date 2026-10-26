@@ -366,6 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
           state.hostName = '';
         } else {
           state.hostName = name;
+          state.paidAttendees[name] = true; // 벙주는 기본 입금 완료 처리
           // If support fee is currently 0, activate default 1,000원
           if (!state.hostSupportFee || state.hostSupportFee === 0) {
             state.hostSupportFee = 1000;
@@ -692,6 +693,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const isHostActive = !!(state.hostName && allAttendees.includes(state.hostName));
     const hostFee = state.hostSupportFee || 0;
 
+    // 벙주는 기본 입금 완료 처리 (호스트가 직접 정산/수금 관리하므로)
+    if (isHostActive) {
+      state.paidAttendees[state.hostName] = true;
+    }
+
     const attendeeTotals = [];
     allAttendees.forEach(name => {
       const sortedParticipation = attendeeRoundCosts[name].sort((a, b) => a.roundIndex - b.roundIndex);
@@ -881,25 +887,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     paymentMembersList.innerHTML = '';
     attendeeTotals.forEach(member => {
+      const isHost = member.name === state.hostName;
       const isPaid = !!state.paidAttendees[member.name];
       const item = document.createElement('div');
-      item.className = `payment-member-item ${isPaid ? 'status-paid' : 'status-unpaid'}`;
+      item.className = `payment-member-item ${isPaid ? 'status-paid' : 'status-unpaid'} ${isHost ? 'is-host-item' : ''}`;
       item.setAttribute('role', 'button');
       item.setAttribute('tabindex', '0');
       item.setAttribute('aria-label', `${member.name} 입금 상태: ${isPaid ? '입금 완료' : '미입금'}`);
 
-      const initial = member.name.charAt(0);
+      const initial = isHost ? '👑' : member.name.charAt(0);
 
       item.innerHTML = `
         <div class="member-item-top">
           <div class="member-name-wrap">
-            <span class="member-avatar">${initial}</span>
+            <span class="member-avatar ${isHost ? 'host-avatar' : ''}">${initial}</span>
             <span class="member-name">${member.name}</span>
-            ${member.isHost ? '<span class="member-host-badge">👑 벙주</span>' : ''}
           </div>
           <span class="member-status-badge">${isPaid ? '완료' : '미입금'}</span>
         </div>
-        <div class="member-amount">${formatMoney(member.amount)}원</div>
+        <div class="member-amount-row">
+          <span class="member-amount">${formatMoney(member.amount)}원</span>
+          ${isHost ? '<span class="host-tag-mini">👑 벙주</span>' : ''}
+        </div>
       `;
 
       const toggleStatus = () => {
@@ -1750,8 +1759,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (hostSelect) {
     hostSelect.addEventListener('change', (e) => {
       state.hostName = e.target.value;
-      if (state.hostName && (!state.hostSupportFee || state.hostSupportFee === 0)) {
-        state.hostSupportFee = 1000;
+      if (state.hostName) {
+        state.paidAttendees[state.hostName] = true;
+        if (!state.hostSupportFee || state.hostSupportFee === 0) {
+          state.hostSupportFee = 1000;
+        }
       }
       renderRounds();
       calculateAndRenderResults();
