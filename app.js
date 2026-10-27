@@ -3,6 +3,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   const CURRENT_STATE_KEY = 'bungbi_calc_current_state_v2';
   const HISTORY_STORAGE_KEY = 'bungbi_calc_history_v2';
+  const MEMBER_PROFILES_KEY = 'bungbi_calc_member_profiles_v1';
 
   // Helper: Default Meeting Title
   function getDefaultMeetingTitle() {
@@ -12,10 +13,21 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${m}월 ${d}일 벙 정산`;
   }
 
+  function createDefaultDrinkTrackerState() {
+    return {
+      shotsPerBottle: 8,
+      includeInReceipt: true,
+      autoSyncToFirstRound: true,
+      members: {}, // { [name]: { shots: 0, updatedAt: number } }
+      logs: [] // [{ id, name, delta, totalShots, timestamp, isMilestone, bottleNum }]
+    };
+  }
+
   // Application State
   const state = {
     meetingId: null, // ID of currently loaded meeting record (null if new)
     meetingTitle: getDefaultMeetingTitle(),
+    activeTab: 'settlement', // 'settlement' | 'drink'
     rounds: [], // { id, name, amount, addedAttendees: [], removedAttendees: [] }
     operatingFee: 0,
     hostName: '', // Name of gathering host (벙주)
@@ -23,7 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
     roundRule: 'floor',
     bankInfo: '기업은행 425-016501-01-019 ㄱㅅㅎ',
     nextRoundId: 1,
-    paidAttendees: {} // { [name]: boolean }
+    paidAttendees: {}, // { [name]: boolean }
+    drinkTracker: createDefaultDrinkTrackerState()
   };
 
   let latestAttendeeTotals = [];
@@ -34,6 +47,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const historyCountPill = document.getElementById('history-count-pill');
   const meetingTitleInput = document.getElementById('meeting-title-input');
   const saveHistoryBtn = document.getElementById('save-history-btn');
+
+  // DOM Elements - Workspace Tabs
+  const tabItemSettlement = document.getElementById('tab-item-settlement');
+  const tabItemDrink = document.getElementById('tab-item-drink');
+  const tabBtnSettlement = document.getElementById('tab-btn-settlement');
+  const tabBtnDrink = document.getElementById('tab-btn-drink');
+  const panelSettlement = document.getElementById('panel-settlement');
+  const panelDrink = document.getElementById('panel-drink');
+  const settlementTabBadge = document.getElementById('settlement-tab-badge');
+  const drinkTabBadge = document.getElementById('drink-tab-badge');
 
   // DOM Elements - Drawer
   const historyDrawer = document.getElementById('history-drawer');
@@ -58,8 +81,41 @@ document.addEventListener('DOMContentLoaded', () => {
   const roundRuleSelect = document.getElementById('round-rule');
   const resultTextElement = document.getElementById('result-text');
   const copyBtn = document.getElementById('copy-btn');
+  const toggleDrinkReceiptBtn = document.getElementById('toggle-drink-receipt-btn');
+  const drinkReceiptBadge = document.getElementById('drink-receipt-badge');
   const toast = document.getElementById('toast');
   const toastMessage = document.getElementById('toast-message');
+
+  // DOM Elements - Drink Tracker Workspace
+  const shotsPerBottleSelect = document.getElementById('shots-per-bottle-select');
+  const syncDrinkToRoundsBtn = document.getElementById('sync-drink-to-rounds-btn');
+  const drinkTotalBottlesStat = document.getElementById('drink-total-bottles-stat');
+  const drinkTotalShotsStat = document.getElementById('drink-total-shots-stat');
+  const drinkMvpStat = document.getElementById('drink-mvp-stat');
+  const drinkAvgStat = document.getElementById('drink-avg-stat');
+  const drinkActiveCountStat = document.getElementById('drink-active-count-stat');
+  const autoSyncRound1Checkbox = document.getElementById('auto-sync-round1-checkbox');
+  const drinkMemberInput = document.getElementById('drink-member-input');
+  const drinkAddMemberBtn = document.getElementById('drink-add-member-btn');
+  const drinkFrequentWrap = document.getElementById('drink-frequent-wrap');
+  const drinkFrequentChips = document.getElementById('drink-frequent-chips');
+  const drinkMembersCountBadge = document.getElementById('drink-members-count-badge');
+  const resetDrinkCountsBtn = document.getElementById('reset-drink-counts-btn');
+  const drinkMembersGrid = document.getElementById('drink-members-grid');
+  const drinkReportText = document.getElementById('drink-report-text');
+  const copyDrinkReportBtn = document.getElementById('copy-drink-report-btn');
+  const undoLastShotBtn = document.getElementById('undo-last-shot-btn');
+  const drinkLiveLogs = document.getElementById('drink-live-logs');
+  const hofMemberCountBadge = document.getElementById('hof-member-count-badge');
+  const memberHallOfFame = document.getElementById('member-hall-of-fame');
+
+  // DOM Elements - 1-Bottle Milestone Banner
+  const bottleMilestoneBanner = document.getElementById('bottle-milestone-banner');
+  const milestoneEmoji = document.getElementById('milestone-emoji');
+  const milestoneTag = document.getElementById('milestone-tag');
+  const milestoneTitle = document.getElementById('milestone-title');
+  const milestoneDesc = document.getElementById('milestone-desc');
+  const closeMilestoneBtn = document.getElementById('close-milestone-btn');
 
   // DOM Elements - Payment Tracker
   const paymentTrackerCard = document.getElementById('payment-tracker-card');
@@ -92,13 +148,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = {
         meetingId: state.meetingId,
         meetingTitle: state.meetingTitle,
+        activeTab: state.activeTab,
         rounds: state.rounds,
         operatingFee: state.operatingFee,
         hostName: state.hostName,
         hostSupportFee: state.hostSupportFee,
         roundRule: state.roundRule,
         bankInfo: state.bankInfo,
-        paidAttendees: state.paidAttendees
+        paidAttendees: state.paidAttendees,
+        drinkTracker: state.drinkTracker
       };
       localStorage.setItem(CURRENT_STATE_KEY, JSON.stringify(data));
     } catch (e) {
@@ -115,6 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       state.meetingId = data.meetingId || null;
       state.meetingTitle = data.meetingTitle || getDefaultMeetingTitle();
+      state.activeTab = data.activeTab || 'settlement';
       state.rounds = data.rounds;
       state.operatingFee = data.operatingFee || 0;
       state.hostName = data.hostName || '';
@@ -122,6 +181,9 @@ document.addEventListener('DOMContentLoaded', () => {
       state.roundRule = data.roundRule || 'floor';
       state.bankInfo = data.bankInfo !== undefined ? data.bankInfo : '기업은행 425-016501-01-019 ㄱㅅㅎ';
       state.paidAttendees = data.paidAttendees || {};
+      state.drinkTracker = Object.assign(createDefaultDrinkTrackerState(), data.drinkTracker || {});
+      state.drinkTracker.members = (data.drinkTracker && data.drinkTracker.members) ? data.drinkTracker.members : {};
+      state.drinkTracker.logs = (data.drinkTracker && Array.isArray(data.drinkTracker.logs)) ? data.drinkTracker.logs : [];
       state.nextRoundId = Math.max(...state.rounds.map(r => r.id), 0) + 1;
 
       meetingTitleInput.value = state.meetingTitle;
@@ -129,6 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
       operatingFeeInput.value = state.operatingFee;
       if (hostSupportFeeInput) hostSupportFeeInput.value = state.hostSupportFee;
       roundRuleSelect.value = state.roundRule;
+      if (shotsPerBottleSelect) shotsPerBottleSelect.value = String(state.drinkTracker.shotsPerBottle || 8);
+      if (autoSyncRound1Checkbox) autoSyncRound1Checkbox.checked = state.drinkTracker.autoSyncToFirstRound !== false;
       return true;
     } catch (e) {
       console.warn('LocalStorage load failed:', e);
@@ -190,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.roundRule = 'floor';
     state.bankInfo = '기업은행 425-016501-01-019 ㄱㅅㅎ';
     state.paidAttendees = {};
+    state.drinkTracker = createDefaultDrinkTrackerState();
 
     try {
       localStorage.removeItem(CURRENT_STATE_KEY);
@@ -200,6 +265,8 @@ document.addEventListener('DOMContentLoaded', () => {
     operatingFeeInput.value = state.operatingFee;
     if (hostSupportFeeInput) hostSupportFeeInput.value = state.hostSupportFee;
     roundRuleSelect.value = state.roundRule;
+    if (shotsPerBottleSelect) shotsPerBottleSelect.value = '8';
+    if (autoSyncRound1Checkbox) autoSyncRound1Checkbox.checked = true;
 
     renderRounds();
     calculateAndRenderResults();
@@ -399,6 +466,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderAllRecommendations() {
     const uniqueAttendees = getAllUniqueAttendees();
+    const drinkMemberNames = state.drinkTracker && state.drinkTracker.members
+      ? Object.keys(state.drinkTracker.members)
+      : [];
+    const candidateSet = new Set([...uniqueAttendees, ...drinkMemberNames]);
+    const candidates = Array.from(candidateSet);
 
     state.rounds.forEach(round => {
       const recContainer = document.getElementById(`recommendations-${round.id}`);
@@ -406,13 +478,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       recContainer.innerHTML = '';
       const roundAttendees = getRoundAttendees(round.id);
-      const unincluded = uniqueAttendees.filter(name => !roundAttendees.includes(name));
+      const unincluded = candidates.filter(name => !roundAttendees.includes(name));
 
       if (unincluded.length > 0) {
         unincluded.forEach(name => {
+          const isFromDrinkOnly = !uniqueAttendees.includes(name) && drinkMemberNames.includes(name);
           const recChip = document.createElement('span');
           recChip.className = 'recommend-chip';
-          recChip.textContent = `+ ${name}`;
+          recChip.textContent = isFromDrinkOnly ? `+ 🍶 ${name}` : `+ ${name}`;
+          recChip.title = isFromDrinkOnly ? '주량 트래커에 등록된 멤버 추가' : '다른 차수 참석자 추가';
           recChip.addEventListener('click', () => {
             addAttendeeToRound(round.id, name);
           });
@@ -420,7 +494,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const heading = document.getElementById(`rec-title-${round.id}`);
-        if (heading) heading.style.display = 'block';
+        if (heading) {
+          heading.textContent = '빠른 참석자 추가 (차수 & 주량 트래커 연동)';
+          heading.style.display = 'block';
+        }
       } else {
         const heading = document.getElementById(`rec-title-${round.id}`);
         if (heading) heading.style.display = 'none';
@@ -837,11 +914,25 @@ document.addEventListener('DOMContentLoaded', () => {
       outputText += `\n${state.bankInfo.trim()}`;
     }
 
+    // Sync round attendees into Drink Tracker
+    ensureDrinkTrackerMembersSynced(allAttendees);
+
+    // Append Drink Report if enabled and at least one shot was recorded
+    if (state.drinkTracker && state.drinkTracker.includeInReceipt) {
+      const drinkSummaryBlock = buildDrinkReportSummaryText(true);
+      if (drinkSummaryBlock) {
+        outputText += `\n\n${drinkSummaryBlock}`;
+      }
+    }
+
     resultTextElement.textContent = outputText.trim();
 
-    // 5. Update Payment Tracker Card & Host UI & Save
+    // 5. Update Payment Tracker Card, Host UI, Drink Tracker & Save
     renderPaymentTracker(latestAttendeeTotals);
     updateHostUI(latestAttendeeTotals);
+    updateDrinkReceiptToggleUI();
+    renderDrinkTracker();
+    updateWorkspaceTabBadges();
     saveCurrentStateToLocalStorage();
   }
 
@@ -977,6 +1068,7 @@ document.addEventListener('DOMContentLoaded', () => {
       bankInfo: state.bankInfo,
       paidAttendees: JSON.parse(JSON.stringify(state.paidAttendees)),
       attendeeTotals: JSON.parse(JSON.stringify(latestAttendeeTotals)),
+      drinkTracker: JSON.parse(JSON.stringify(state.drinkTracker || createDefaultDrinkTrackerState())),
       totalAmount: totalAmount,
       totalAttendeesCount: totalAttendeesCount,
       paidCount: paidCount,
@@ -992,12 +1084,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     saveHistoryList(historyList);
+    updateMemberEncyclopediaFromRecord(newRecord);
 
     // 1. Reset main screen to blank state for next meeting
     initFirstRound(false);
 
     // 2. Alert user
-    showToastMessage(`'${title}' 정산이 보관함에 저장되었습니다! 새 벙 정산을 시작합니다 ✨`);
+    showToastMessage(`'${title}' 정산 및 주량 기록이 보관함에 저장되었습니다! ✨`);
   }
 
   function renderHistoryList() {
@@ -1028,6 +1121,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const rate = attendees.length > 0 ? Math.round((currentPaidCount / attendees.length) * 100) : 0;
       const isExpanded = expandedHistoryMeetingIds.has(record.id);
 
+      // Calculate drink summary if present
+      let historyDrinkPill = '';
+      if (record.drinkTracker && record.drinkTracker.members) {
+        const spb = record.drinkTracker.shotsPerBottle || 8;
+        const totalShots = Object.values(record.drinkTracker.members).reduce((acc, m) => acc + (m.shots || 0), 0);
+        if (totalShots > 0) {
+          historyDrinkPill = `<span class="history-meta-pill pill-paid">🍶 총 ${formatBottlesAndShots(totalShots, spb)}</span>`;
+        }
+      }
+
       card.innerHTML = `
         <div class="history-card-header">
           <div>
@@ -1039,6 +1142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="history-meta-row">
           <span class="history-meta-pill">${record.rounds.length}개 차수</span>
           <span class="history-meta-pill">${attendees.length}명 참석</span>
+          ${historyDrinkPill}
           <span class="history-meta-pill ${isAllPaid ? 'pill-paid' : 'pill-unpaid'}">
             ${isAllPaid ? '전원 입금 완료 🎉' : `입금 ${currentPaidCount}/${attendees.length}명 (${rate}%)`}
           </span>
@@ -1198,6 +1302,10 @@ document.addEventListener('DOMContentLoaded', () => {
     state.roundRule = record.roundRule || 'floor';
     state.bankInfo = record.bankInfo || '기업은행 425-016501-01-019 ㄱㅅㅎ';
     state.paidAttendees = JSON.parse(JSON.stringify(record.paidAttendees || {}));
+    state.drinkTracker = Object.assign(
+      createDefaultDrinkTrackerState(),
+      record.drinkTracker ? JSON.parse(JSON.stringify(record.drinkTracker)) : {}
+    );
     state.nextRoundId = Math.max(...state.rounds.map(r => r.id), 0) + 1;
 
     // Sync input fields
@@ -1206,6 +1314,8 @@ document.addEventListener('DOMContentLoaded', () => {
     operatingFeeInput.value = state.operatingFee;
     if (hostSupportFeeInput) hostSupportFeeInput.value = state.hostSupportFee;
     roundRuleSelect.value = state.roundRule;
+    if (shotsPerBottleSelect) shotsPerBottleSelect.value = String(state.drinkTracker.shotsPerBottle || 8);
+    if (autoSyncRound1Checkbox) autoSyncRound1Checkbox.checked = state.drinkTracker.autoSyncToFirstRound !== false;
 
     renderRounds();
     calculateAndRenderResults();
@@ -1219,6 +1329,7 @@ document.addEventListener('DOMContentLoaded', () => {
     historyList = historyList.filter(item => item.id !== id);
     saveHistoryList(historyList);
     renderHistoryList();
+    renderMemberHallOfFame();
 
     // If currently editing this record, unlink id
     if (state.meetingId === id) {
@@ -1234,6 +1345,711 @@ document.addEventListener('DOMContentLoaded', () => {
       initFirstRound(false);
       showToastMessage('새로운 벙 정산이 시작되었습니다! ✨');
     }
+  }
+
+  // ==========================================================================
+  // Workspace Tab Switching & Soju Drink Tracker System
+  // ==========================================================================
+
+  function switchWorkspaceTab(tabName) {
+    state.activeTab = (tabName === 'drink') ? 'drink' : 'settlement';
+    const isDrink = state.activeTab === 'drink';
+
+    if (tabItemSettlement) tabItemSettlement.classList.toggle('active', !isDrink);
+    if (tabItemDrink) tabItemDrink.classList.toggle('active', isDrink);
+    if (tabBtnSettlement) tabBtnSettlement.setAttribute('aria-selected', String(!isDrink));
+    if (tabBtnDrink) tabBtnDrink.setAttribute('aria-selected', String(isDrink));
+
+    if (panelSettlement) panelSettlement.hidden = isDrink;
+    if (panelDrink) panelDrink.hidden = !isDrink;
+
+    if (isDrink) {
+      renderDrinkTracker();
+    } else {
+      renderRounds();
+      calculateAndRenderResults();
+    }
+    saveCurrentStateToLocalStorage();
+  }
+
+  function formatShotCount(shots) {
+    if (Number.isInteger(shots)) return `${shots}`;
+    return shots.toFixed(1).replace(/\.0$/, '');
+  }
+
+  function formatBottlesAndShots(shots, shotsPerBottle = 8) {
+    const cleanShots = Math.max(0, Number(shots) || 0);
+    const spb = Math.max(1, parseInt(shotsPerBottle, 10) || 8);
+    const bottles = Math.floor(cleanShots / spb);
+    const remShots = Number((cleanShots - bottles * spb).toFixed(1));
+
+    if (bottles === 0) {
+      return `${formatShotCount(remShots)}잔`;
+    }
+    if (remShots === 0) {
+      return `${bottles}병`;
+    }
+    return `${bottles}병 ${formatShotCount(remShots)}잔`;
+  }
+
+  function ensureDrinkTrackerMembersSynced(roundAttendees) {
+    if (!state.drinkTracker) {
+      state.drinkTracker = createDefaultDrinkTrackerState();
+    }
+    if (!state.drinkTracker.members) {
+      state.drinkTracker.members = {};
+    }
+    const attendees = roundAttendees || getAllUniqueAttendees();
+    attendees.forEach(name => {
+      const trimmed = name.trim();
+      if (trimmed && !state.drinkTracker.members[trimmed]) {
+        state.drinkTracker.members[trimmed] = {
+          shots: 0,
+          updatedAt: Date.now()
+        };
+      }
+    });
+  }
+
+  function updateWorkspaceTabBadges() {
+    const uniqueRoundAttendees = getAllUniqueAttendees();
+    const drinkMembers = state.drinkTracker && state.drinkTracker.members ? Object.keys(state.drinkTracker.members) : [];
+    const allCount = new Set([...uniqueRoundAttendees, ...drinkMembers]).size;
+
+    if (settlementTabBadge) {
+      settlementTabBadge.textContent = `${uniqueRoundAttendees.length || allCount}명`;
+    }
+
+    if (drinkTabBadge && state.drinkTracker && state.drinkTracker.members) {
+      const spb = state.drinkTracker.shotsPerBottle || 8;
+      const totalShots = Object.values(state.drinkTracker.members).reduce((acc, m) => acc + (m.shots || 0), 0);
+      const bottles = Math.floor(totalShots / spb);
+      const rem = Number((totalShots - bottles * spb).toFixed(1));
+      drinkTabBadge.textContent = `${bottles}병 ${formatShotCount(rem)}잔`;
+    }
+  }
+
+  function updateDrinkReceiptToggleUI() {
+    if (!toggleDrinkReceiptBtn || !drinkReceiptBadge) return;
+    const isOn = !!(state.drinkTracker && state.drinkTracker.includeInReceipt);
+    toggleDrinkReceiptBtn.classList.toggle('is-active', isOn);
+    drinkReceiptBadge.textContent = isOn ? 'ON' : 'OFF';
+  }
+
+  function addMemberFromDrinkTracker(rawInput) {
+    if (!rawInput || typeof rawInput !== 'string') return;
+    const names = rawInput.split(/[\s,]+/).map(n => n.trim()).filter(Boolean);
+    if (names.length === 0) return;
+
+    if (!state.drinkTracker.members) state.drinkTracker.members = {};
+    let addedCount = 0;
+
+    names.forEach(name => {
+      if (!state.drinkTracker.members[name]) {
+        state.drinkTracker.members[name] = {
+          shots: 0,
+          updatedAt: Date.now()
+        };
+        addedCount++;
+      }
+
+      // If autoSyncToFirstRound is enabled, also add to 1st round in settlement calculator
+      if (state.drinkTracker.autoSyncToFirstRound && state.rounds.length > 0) {
+        const firstRound = state.rounds[0];
+        const currentFirstRoundAttendees = getRoundAttendees(firstRound.id);
+        if (!currentFirstRoundAttendees.includes(name)) {
+          firstRound.removedAttendees = firstRound.removedAttendees.filter(n => n !== name);
+          if (!firstRound.addedAttendees.includes(name)) {
+            firstRound.addedAttendees.push(name);
+          }
+        }
+      }
+    });
+
+    renderRounds();
+    calculateAndRenderResults();
+    if (addedCount > 0) {
+      showToastMessage(
+        state.drinkTracker.autoSyncToFirstRound
+          ? `${names.join(', ')}님이 주량 트래커 및 1차 정산에 추가되었습니다! 🍶`
+          : `${names.join(', ')}님이 주량 트래커에 추가되었습니다! 🍶`
+      );
+    }
+  }
+
+  function syncDrinkMembersToSettlementRounds() {
+    const drinkMemberNames = state.drinkTracker && state.drinkTracker.members
+      ? Object.keys(state.drinkTracker.members)
+      : [];
+
+    if (drinkMemberNames.length === 0) {
+      showToastMessage('주량 트래커에 등록된 인원이 없습니다.');
+      return;
+    }
+
+    if (state.rounds.length === 0) {
+      initFirstRound(true);
+    }
+
+    const firstRound = state.rounds[0];
+    const currentAttendees = getRoundAttendees(firstRound.id);
+    let newlySynced = 0;
+
+    drinkMemberNames.forEach(name => {
+      if (!currentAttendees.includes(name)) {
+        firstRound.removedAttendees = firstRound.removedAttendees.filter(n => n !== name);
+        if (!firstRound.addedAttendees.includes(name)) {
+          firstRound.addedAttendees.push(name);
+          newlySynced++;
+        }
+      }
+    });
+
+    renderRounds();
+    calculateAndRenderResults();
+
+    if (newlySynced > 0) {
+      showToastMessage(`주량 트래커 인원 ${newlySynced}명을 [${firstRound.name}] 정산 명단에 연동했습니다! ⚡`);
+    } else {
+      showToastMessage(`이미 모든 인원(${drinkMemberNames.length}명)이 정산 차수에 연동되어 있습니다! ✅`);
+    }
+  }
+
+  let milestoneBannerTimer = null;
+
+  function triggerBottleMilestone(name, bottleCount, totalShots, shotsPerBottle) {
+    if (!bottleMilestoneBanner) return;
+
+    // Haptic vibration on mobile if supported
+    if (navigator.vibrate) {
+      try {
+        navigator.vibrate([120, 60, 160]);
+      } catch (e) {}
+    }
+
+    let emoji = '🍾';
+    let tag = `SOJU ${bottleCount} BOTTLE MILESTONE!`;
+    let title = `🎉 ${name}님 소주 ${bottleCount}병(${formatShotCount(totalShots)}잔) 돌파!`;
+    let desc = '기분 좋은 1병 달성! 중간에 물도 한 잔씩 마셔주세요 💧';
+
+    if (bottleCount === 2) {
+      emoji = '🔥';
+      title = `🔥 ${name}님 소주 2병(${formatShotCount(totalShots)}잔) 돌파!`;
+      desc = '오늘 텐션 최고조! 주당의 품격을 보여주고 계십니다 🍶';
+    } else if (bottleCount >= 3) {
+      emoji = '👑';
+      title = `👑 전설의 주신! ${name}님 ${bottleCount}병(${formatShotCount(totalShots)}잔) 돌파!`;
+      desc = `오늘 벙의 살아있는 전설입니다! 안주와 수분 섭취 필수 🚨`;
+    }
+
+    if (milestoneEmoji) milestoneEmoji.textContent = emoji;
+    if (milestoneTag) milestoneTag.textContent = tag;
+    if (milestoneTitle) milestoneTitle.textContent = title;
+    if (milestoneDesc) milestoneDesc.textContent = desc;
+
+    bottleMilestoneBanner.classList.add('show');
+    bottleMilestoneBanner.setAttribute('aria-hidden', 'false');
+
+    clearTimeout(milestoneBannerTimer);
+    milestoneBannerTimer = setTimeout(() => {
+      hideBottleMilestoneBanner();
+    }, 4500);
+  }
+
+  function hideBottleMilestoneBanner() {
+    if (!bottleMilestoneBanner) return;
+    bottleMilestoneBanner.classList.remove('show');
+    bottleMilestoneBanner.setAttribute('aria-hidden', 'true');
+  }
+
+  function addDrinkShots(name, delta) {
+    if (!state.drinkTracker.members[name]) {
+      state.drinkTracker.members[name] = { shots: 0, updatedAt: Date.now() };
+    }
+
+    const spb = state.drinkTracker.shotsPerBottle || 8;
+    const prevShots = state.drinkTracker.members[name].shots || 0;
+    const nextShots = Math.max(0, Number((prevShots + delta).toFixed(1)));
+
+    if (nextShots === prevShots) return;
+
+    const prevBottles = Math.floor(prevShots / spb);
+    const nextBottles = Math.floor(nextShots / spb);
+    const crossedMilestone = delta > 0 && nextBottles > prevBottles && nextBottles >= 1;
+
+    state.drinkTracker.members[name].shots = nextShots;
+    state.drinkTracker.members[name].updatedAt = Date.now();
+
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+    state.drinkTracker.logs.unshift({
+      id: 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      name: name,
+      delta: delta,
+      prevShots: prevShots,
+      totalShots: nextShots,
+      timestamp: timeStr,
+      isMilestone: crossedMilestone,
+      bottleNum: crossedMilestone ? nextBottles : 0
+    });
+
+    // Keep latest 40 logs
+    if (state.drinkTracker.logs.length > 40) {
+      state.drinkTracker.logs = state.drinkTracker.logs.slice(0, 40);
+    }
+
+    if (crossedMilestone) {
+      triggerBottleMilestone(name, nextBottles, nextShots, spb);
+    }
+
+    calculateAndRenderResults();
+  }
+
+  function undoLastDrinkShot() {
+    if (!state.drinkTracker || !Array.isArray(state.drinkTracker.logs) || state.drinkTracker.logs.length === 0) {
+      return;
+    }
+
+    const lastLog = state.drinkTracker.logs.shift();
+    if (lastLog && state.drinkTracker.members[lastLog.name]) {
+      state.drinkTracker.members[lastLog.name].shots = Math.max(0, Number((lastLog.prevShots || 0).toFixed(1)));
+      showToastMessage(`${lastLog.name}님의 방금 기록을 취소했습니다 (${formatShotCount(state.drinkTracker.members[lastLog.name].shots)}잔)`);
+    }
+
+    calculateAndRenderResults();
+  }
+
+  function removeDrinkMember(name) {
+    if (!state.drinkTracker || !state.drinkTracker.members[name]) return;
+    const uniqueRoundAttendees = getAllUniqueAttendees();
+    if (uniqueRoundAttendees.includes(name)) {
+      if (!confirm(`'${name}'님은 현재 정산 차수에도 포함되어 있습니다.\n주량 트래커와 정산 차수 모두에서 제외할까요?`)) {
+        return;
+      }
+      state.rounds.forEach(r => {
+        r.addedAttendees = r.addedAttendees.filter(n => n !== name);
+        if (!r.removedAttendees.includes(name)) {
+          r.removedAttendees.push(name);
+        }
+      });
+    }
+    delete state.drinkTracker.members[name];
+    renderRounds();
+    calculateAndRenderResults();
+  }
+
+  function buildDrinkReportSummaryText(isCompactForReceipt = false) {
+    if (!state.drinkTracker || !state.drinkTracker.members) return '';
+
+    const spb = state.drinkTracker.shotsPerBottle || 8;
+    const entries = Object.entries(state.drinkTracker.members)
+      .map(([name, info]) => ({ name, shots: Number(info.shots) || 0 }))
+      .sort((a, b) => b.shots - a.shots || a.name.localeCompare(b.name, 'ko'));
+
+    const totalShots = entries.reduce((sum, item) => sum + item.shots, 0);
+    const activeDrinkers = entries.filter(item => item.shots > 0);
+
+    if (isCompactForReceipt && totalShots === 0) {
+      return '';
+    }
+
+    if (entries.length === 0 || totalShots === 0) {
+      return `[🍶 ${state.meetingTitle} 음주 리포트]\n아직 기록된 소주 잔 수가 없습니다.\n술자리에서 [+1잔 마심!] 버튼을 눌러 주량을 체크해 보세요!`;
+    }
+
+    const maxShots = activeDrinkers.length > 0 ? activeDrinkers[0].shots : 0;
+    const mvpNames = activeDrinkers.filter(d => d.shots === maxShots).map(d => d.name);
+
+    let text = `[🍶 오늘의 주량 리포트 (총 ${formatBottlesAndShots(totalShots, spb)} / ${formatShotCount(totalShots)}잔)]\n`;
+    if (mvpNames.length > 0 && maxShots > 0) {
+      text += `🏆 오늘의 주당 MVP: ${mvpNames.join(', ')} (${formatBottlesAndShots(maxShots, spb)})\n`;
+    }
+
+    activeDrinkers.forEach(item => {
+      const bottles = Math.floor(item.shots / spb);
+      const fireTag = bottles >= 2 ? ' 🔥' : (bottles === 1 ? ' 🍾' : '');
+      text += `• ${item.name}: ${formatBottlesAndShots(item.shots, spb)} (${formatShotCount(item.shots)}잔)${fireTag}\n`;
+    });
+
+    const nonDrinkers = entries.filter(item => item.shots === 0).map(i => i.name);
+    if (!isCompactForReceipt && nonDrinkers.length > 0) {
+      text += `• 비음주/0잔: ${nonDrinkers.join(', ')}\n`;
+    }
+
+    text += `(※ 1병 = ${spb}잔 기준)`;
+    return text.trim();
+  }
+
+  // ==========================================================================
+  // Member Drinking Encyclopedia / Cumulative LocalStorage DB
+  // ==========================================================================
+
+  function updateMemberEncyclopediaFromRecord(record) {
+    try {
+      const raw = localStorage.getItem(MEMBER_PROFILES_KEY);
+      const profiles = raw ? JSON.parse(raw) : {};
+
+      const spb = (record.drinkTracker && record.drinkTracker.shotsPerBottle) || 8;
+      const drinkMembers = (record.drinkTracker && record.drinkTracker.members) || {};
+      const attendeeNames = new Set([
+        ...(record.attendeeTotals || []).map(a => a.name),
+        ...Object.keys(drinkMembers)
+      ]);
+
+      attendeeNames.forEach(name => {
+        if (!profiles[name]) {
+          profiles[name] = {
+            name: name,
+            lastSeenAt: record.savedAt
+          };
+        } else {
+          profiles[name].lastSeenAt = record.savedAt;
+        }
+      });
+
+      localStorage.setItem(MEMBER_PROFILES_KEY, JSON.stringify(profiles));
+    } catch (e) {
+      console.warn('Update member encyclopedia failed:', e);
+    }
+  }
+
+  function getAggregatedMemberEncyclopedia() {
+    const historyList = getHistoryList();
+    const map = {};
+
+    // Also include saved profile names if any
+    try {
+      const raw = localStorage.getItem(MEMBER_PROFILES_KEY);
+      const savedProfiles = raw ? JSON.parse(raw) : {};
+      Object.keys(savedProfiles).forEach(name => {
+        map[name] = {
+          name: name,
+          meetingsCount: 0,
+          drinkSessionsCount: 0,
+          totalShots: 0,
+          maxShotsInOneMeeting: 0,
+          lastSeenAt: savedProfiles[name].lastSeenAt || ''
+        };
+      });
+    } catch (e) {}
+
+    // Aggregate across all saved history records
+    historyList.forEach(rec => {
+      const drinkMembers = (rec.drinkTracker && rec.drinkTracker.members) || {};
+      const roundMembers = (rec.attendeeTotals || []).map(a => a.name);
+      const allInMeeting = new Set([...roundMembers, ...Object.keys(drinkMembers)]);
+
+      allInMeeting.forEach(name => {
+        if (!name) return;
+        if (!map[name]) {
+          map[name] = {
+            name: name,
+            meetingsCount: 0,
+            drinkSessionsCount: 0,
+            totalShots: 0,
+            maxShotsInOneMeeting: 0,
+            lastSeenAt: rec.savedAt || ''
+          };
+        }
+        map[name].meetingsCount += 1;
+        if (!map[name].lastSeenAt) map[name].lastSeenAt = rec.savedAt || '';
+
+        const shots = drinkMembers[name] ? (Number(drinkMembers[name].shots) || 0) : 0;
+        if (shots > 0) {
+          map[name].drinkSessionsCount += 1;
+          map[name].totalShots = Number((map[name].totalShots + shots).toFixed(1));
+          if (shots > map[name].maxShotsInOneMeeting) {
+            map[name].maxShotsInOneMeeting = shots;
+          }
+        }
+      });
+    });
+
+    // Also merge current active session live stats for preview
+    if (state.drinkTracker && state.drinkTracker.members) {
+      Object.entries(state.drinkTracker.members).forEach(([name, info]) => {
+        const shots = Number(info.shots) || 0;
+        if (!map[name] && shots > 0) {
+          map[name] = {
+            name: name,
+            meetingsCount: 1,
+            drinkSessionsCount: 1,
+            totalShots: shots,
+            maxShotsInOneMeeting: shots,
+            lastSeenAt: '현재 진행 중'
+          };
+        } else if (map[name] && shots > map[name].maxShotsInOneMeeting) {
+          map[name].maxShotsInOneMeeting = shots;
+        }
+      });
+    }
+
+    return Object.values(map).sort((a, b) => {
+      if (b.totalShots !== a.totalShots) return b.totalShots - a.totalShots;
+      return b.meetingsCount - a.meetingsCount;
+    });
+  }
+
+  function renderMemberHallOfFame() {
+    if (!memberHallOfFame) return;
+    const encyclopedia = getAggregatedMemberEncyclopedia();
+    const spb = (state.drinkTracker && state.drinkTracker.shotsPerBottle) || 8;
+
+    if (hofMemberCountBadge) {
+      hofMemberCountBadge.textContent = `${encyclopedia.length}명 기록됨`;
+    }
+
+    // Render Frequent Members Quick-Add Chips in Drink Tracker
+    if (drinkFrequentWrap && drinkFrequentChips) {
+      const currentDrinkNames = state.drinkTracker && state.drinkTracker.members
+        ? Object.keys(state.drinkTracker.members)
+        : [];
+      const unaddedFrequent = encyclopedia.filter(p => !currentDrinkNames.includes(p.name));
+
+      if (unaddedFrequent.length > 0) {
+        drinkFrequentWrap.style.display = 'block';
+        drinkFrequentChips.innerHTML = '';
+        unaddedFrequent.slice(0, 14).forEach(prof => {
+          const chip = document.createElement('span');
+          chip.className = 'recommend-chip';
+          const maxTag = prof.maxShotsInOneMeeting > 0
+            ? ` (최고 ${formatBottlesAndShots(prof.maxShotsInOneMeeting, spb)})`
+            : ` (${prof.meetingsCount}회 참석)`;
+          chip.textContent = `+ ${prof.name}${maxTag}`;
+          chip.addEventListener('click', () => {
+            addMemberFromDrinkTracker(prof.name);
+          });
+          drinkFrequentChips.appendChild(chip);
+        });
+      } else {
+        drinkFrequentWrap.style.display = 'none';
+      }
+    }
+
+    if (encyclopedia.length === 0) {
+      memberHallOfFame.innerHTML = `
+        <div style="text-align: center; padding: 1.4rem 0.5rem; color: var(--text-muted); font-size: 0.82rem;">
+          아직 누적된 멤버 기록이 없습니다.<br>술자리 주량을 체크하거나 정산 내역을 저장하면 자동으로 주량 도감이 만들어집니다!
+        </div>
+      `;
+      return;
+    }
+
+    memberHallOfFame.innerHTML = '';
+    encyclopedia.forEach((prof, idx) => {
+      const item = document.createElement('div');
+      item.className = 'hof-item';
+      const rankLabel = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `${idx + 1}.`));
+      const totalStr = prof.totalShots > 0
+        ? `누적 ${formatBottlesAndShots(prof.totalShots, spb)} (${formatShotCount(prof.totalShots)}잔)`
+        : '음주 기록 0잔';
+      const maxStr = prof.maxShotsInOneMeeting > 0
+        ? `1회 최고: ${formatBottlesAndShots(prof.maxShotsInOneMeeting, spb)}`
+        : '비음주 / 기록 전';
+
+      item.innerHTML = `
+        <div class="hof-item-left">
+          <span class="hof-rank">${rankLabel}</span>
+          <span class="hof-name">${prof.name}</span>
+          <span class="hof-meetings-pill">${prof.meetingsCount}회 벙</span>
+        </div>
+        <div class="hof-item-right">
+          <span class="hof-total-soju">${totalStr}</span>
+          <span class="hof-max-soju">${maxStr}</span>
+        </div>
+      `;
+      memberHallOfFame.appendChild(item);
+    });
+  }
+
+  function renderDrinkTracker() {
+    if (!drinkMembersGrid) return;
+
+    ensureDrinkTrackerMembersSynced();
+
+    const spb = state.drinkTracker.shotsPerBottle || 8;
+    const membersObj = state.drinkTracker.members || {};
+    const memberNames = Object.keys(membersObj);
+
+    const encyclopedia = getAggregatedMemberEncyclopedia();
+    const profMap = {};
+    encyclopedia.forEach(p => {
+      profMap[p.name] = p;
+    });
+
+    // Calculate overall metrics
+    let totalShots = 0;
+    let maxShots = 0;
+    let activeDrinkersCount = 0;
+
+    memberNames.forEach(name => {
+      const s = Number(membersObj[name].shots) || 0;
+      totalShots += s;
+      if (s > 0) activeDrinkersCount++;
+      if (s > maxShots) maxShots = s;
+    });
+
+    const mvpNames = maxShots > 0
+      ? memberNames.filter(n => (Number(membersObj[n].shots) || 0) === maxShots)
+      : [];
+
+    if (drinkTotalBottlesStat) {
+      drinkTotalBottlesStat.textContent = formatBottlesAndShots(totalShots, spb);
+    }
+    if (drinkTotalShotsStat) {
+      drinkTotalShotsStat.textContent = `(총 ${formatShotCount(totalShots)}잔)`;
+    }
+    if (drinkMvpStat) {
+      drinkMvpStat.textContent = mvpNames.length > 0
+        ? `${mvpNames.join(', ')} (${formatBottlesAndShots(maxShots, spb)})`
+        : '아직 없음';
+    }
+    if (drinkAvgStat) {
+      const avgShots = activeDrinkersCount > 0 ? Number((totalShots / activeDrinkersCount).toFixed(1)) : 0;
+      drinkAvgStat.textContent = formatBottlesAndShots(avgShots, spb);
+    }
+    if (drinkActiveCountStat) {
+      drinkActiveCountStat.textContent = `(${activeDrinkersCount}명 음주 / 총 ${memberNames.length}명)`;
+    }
+    if (drinkMembersCountBadge) {
+      drinkMembersCountBadge.textContent = `${memberNames.length}명`;
+    }
+
+    // Render Member Cards
+    drinkMembersGrid.innerHTML = '';
+
+    if (memberNames.length === 0) {
+      drinkMembersGrid.innerHTML = `
+        <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🍶</div>
+          <p style="font-size: 0.92rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.25rem;">
+            아직 등록된 술자리 참석자가 없습니다!
+          </p>
+          <p style="font-size: 0.8rem;">
+            위 입력창에서 참석자를 추가하거나 [💰 정산 계산기] 탭에서 차수별 참석자를 입력하면 자동으로 이곳에 연동됩니다.
+          </p>
+        </div>
+      `;
+    } else {
+      memberNames.forEach(name => {
+        const info = membersObj[name];
+        const shots = Number(info.shots) || 0;
+        const bottles = Math.floor(shots / spb);
+        const currentBottleProgress = shots - (bottles * spb);
+        const isMvp = maxShots > 0 && shots === maxShots;
+        const isHost = state.hostName === name;
+        const pastProf = profMap[name];
+
+        const card = document.createElement('div');
+        card.className = `drink-member-card ${bottles >= 1 ? 'has-bottle' : ''} ${isMvp ? 'is-mvp' : ''}`;
+
+        let recordHint = '오늘 첫 기록 대기 중';
+        if (pastProf && pastProf.maxShotsInOneMeeting > 0) {
+          recordHint = `역대 최고: ${formatBottlesAndShots(pastProf.maxShotsInOneMeeting, spb)}`;
+        } else if (shots > 0) {
+          recordHint = `${spb}잔마다 1병 알림 울림`;
+        }
+
+        // Build visual glasses slots for 1 bottle (spb slots)
+        let glassesHtml = '';
+        for (let i = 1; i <= spb; i++) {
+          const isFilled = currentBottleProgress >= i || (currentBottleProgress === 0 && bottles > 0 && shots > 0 && (shots % spb === 0));
+          const isHalf = !isFilled && (currentBottleProgress >= i - 0.5);
+          glassesHtml += `
+            <div class="soju-glass-slot ${isFilled || isHalf ? 'filled' : ''}" title="${i}잔째">
+              ${isFilled ? '🍶' : (isHalf ? '🥛' : i)}
+            </div>
+          `;
+        }
+
+        const gaugeStatusText = bottles > 0 && (shots % spb === 0)
+          ? `🍾 ${bottles}병 딱 클리어!`
+          : `${bottles + 1}병째 진행 중 (${formatShotCount(currentBottleProgress)}/${spb}잔)`;
+
+        card.innerHTML = `
+          <div class="drink-card-top">
+            <div class="drink-member-info">
+              <div class="drink-member-name-row">
+                <span class="drink-member-name">${isHost ? '👑 ' : ''}${name}</span>
+                ${isMvp ? '<span class="drink-mvp-crown">🏆 주당 1위</span>' : ''}
+              </div>
+              <span class="drink-member-record-hint">${recordHint}</span>
+            </div>
+            <div class="drink-card-count-box">
+              <span class="drink-bottle-badge">${formatBottlesAndShots(shots, spb)}</span>
+              <span class="drink-shots-sub">총 ${formatShotCount(shots)}잔</span>
+            </div>
+          </div>
+
+          <div class="soju-gauge-wrap">
+            <div class="soju-gauge-header">
+              <span>${gaugeStatusText}</span>
+              ${bottles > 0 ? `<span class="soju-completed-bottles">${'🍾'.repeat(Math.min(bottles, 5))} ${bottles}병 돌파</span>` : ''}
+            </div>
+            <div class="soju-glasses-row" style="grid-template-columns: repeat(${spb}, 1fr);">
+              ${glassesHtml}
+            </div>
+          </div>
+
+          <div class="drink-card-actions">
+            <button type="button" class="btn-shot-minus" data-name="${name}" ${shots <= 0 ? 'disabled' : ''} title="1잔 취소">-1</button>
+            <button type="button" class="btn-shot-half" data-name="${name}" title="반 잔(꺾기) 추가">+반잔</button>
+            <button type="button" class="btn-shot-plus" data-name="${name}">
+              <span>🍶 +1잔 마심!</span>
+            </button>
+          </div>
+        `;
+
+        const plusBtn = card.querySelector('.btn-shot-plus');
+        plusBtn.addEventListener('click', () => addDrinkShots(name, 1));
+
+        const halfBtn = card.querySelector('.btn-shot-half');
+        halfBtn.addEventListener('click', () => addDrinkShots(name, 0.5));
+
+        const minusBtn = card.querySelector('.btn-shot-minus');
+        minusBtn.addEventListener('click', () => addDrinkShots(name, -1));
+
+        drinkMembersGrid.appendChild(card);
+      });
+    }
+
+    // Update Standalone Drink Report Preview
+    if (drinkReportText) {
+      drinkReportText.textContent = buildDrinkReportSummaryText(false);
+    }
+
+    // Update Undo Button & Live Timeline Logs
+    const logs = (state.drinkTracker && state.drinkTracker.logs) || [];
+    if (undoLastShotBtn) {
+      undoLastShotBtn.disabled = logs.length === 0;
+    }
+
+    if (drinkLiveLogs) {
+      if (logs.length === 0) {
+        drinkLiveLogs.innerHTML = `
+          <div style="text-align: center; padding: 1.2rem 0.5rem; color: var(--text-muted); font-size: 0.8rem;">
+            아직 마신 기록이 없습니다. [+1잔 마심!]을 누르면 타임라인에 기록됩니다.
+          </div>
+        `;
+      } else {
+        drinkLiveLogs.innerHTML = logs.slice(0, 15).map(log => {
+          const actionDesc = log.delta > 0
+            ? `+${formatShotCount(log.delta)}잔 (누적 ${formatBottlesAndShots(log.totalShots, spb)})`
+            : `${formatShotCount(log.delta)}잔 취소 (누적 ${formatBottlesAndShots(log.totalShots, spb)})`;
+          const milestoneBadge = log.isMilestone ? ` 🎉 <strong>${log.bottleNum}병 돌파!</strong>` : '';
+          return `
+            <div class="drink-log-item ${log.isMilestone ? 'milestone-log' : ''}">
+              <span>🍶 <strong>${log.name}</strong>님 ${actionDesc}${milestoneBadge}</span>
+              <span class="drink-log-time">${log.timestamp}</span>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // Update Cumulative Hall of Fame & Frequent Member Chips
+    renderMemberHallOfFame();
   }
 
   // ==========================================================================
@@ -1850,6 +2666,92 @@ document.addEventListener('DOMContentLoaded', () => {
   if (importTextInput) importTextInput.addEventListener('input', updateImportPreview);
   if (applyImportBtn) applyImportBtn.addEventListener('click', applyImportedData);
 
+  // Workspace Tab Switcher & Drink Tracker Listeners
+  if (tabBtnSettlement) {
+    tabBtnSettlement.addEventListener('click', () => switchWorkspaceTab('settlement'));
+  }
+  if (tabBtnDrink) {
+    tabBtnDrink.addEventListener('click', () => switchWorkspaceTab('drink'));
+  }
+
+  if (toggleDrinkReceiptBtn) {
+    toggleDrinkReceiptBtn.addEventListener('click', () => {
+      if (!state.drinkTracker) state.drinkTracker = createDefaultDrinkTrackerState();
+      state.drinkTracker.includeInReceipt = !state.drinkTracker.includeInReceipt;
+      calculateAndRenderResults();
+    });
+  }
+
+  if (shotsPerBottleSelect) {
+    shotsPerBottleSelect.addEventListener('change', (e) => {
+      if (!state.drinkTracker) state.drinkTracker = createDefaultDrinkTrackerState();
+      state.drinkTracker.shotsPerBottle = parseInt(e.target.value, 10) || 8;
+      calculateAndRenderResults();
+    });
+  }
+
+  if (syncDrinkToRoundsBtn) {
+    syncDrinkToRoundsBtn.addEventListener('click', syncDrinkMembersToSettlementRounds);
+  }
+
+  if (autoSyncRound1Checkbox) {
+    autoSyncRound1Checkbox.addEventListener('change', (e) => {
+      if (!state.drinkTracker) state.drinkTracker = createDefaultDrinkTrackerState();
+      state.drinkTracker.autoSyncToFirstRound = e.target.checked;
+      saveCurrentStateToLocalStorage();
+    });
+  }
+
+  if (drinkAddMemberBtn && drinkMemberInput) {
+    const submitDrinkMember = () => {
+      const val = drinkMemberInput.value.trim();
+      if (!val) return;
+      addMemberFromDrinkTracker(val);
+      drinkMemberInput.value = '';
+      drinkMemberInput.focus();
+    };
+
+    drinkAddMemberBtn.addEventListener('click', submitDrinkMember);
+    drinkMemberInput.addEventListener('keydown', (e) => {
+      if (e.isComposing) return;
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitDrinkMember();
+      }
+    });
+  }
+
+  if (resetDrinkCountsBtn) {
+    resetDrinkCountsBtn.addEventListener('click', () => {
+      if (!state.drinkTracker || !state.drinkTracker.members) return;
+      const hasAnyShots = Object.values(state.drinkTracker.members).some(m => (m.shots || 0) > 0);
+      if (!hasAnyShots) return;
+      if (confirm('참석자 명단은 유지하고 마신 소주 잔 수만 모두 0잔으로 초기화하시겠습니까?')) {
+        Object.keys(state.drinkTracker.members).forEach(name => {
+          state.drinkTracker.members[name].shots = 0;
+        });
+        state.drinkTracker.logs = [];
+        calculateAndRenderResults();
+        showToastMessage('소주 잔 카운트가 0잔으로 초기화되었습니다.');
+      }
+    });
+  }
+
+  if (copyDrinkReportBtn) {
+    copyDrinkReportBtn.addEventListener('click', () => {
+      const text = buildDrinkReportSummaryText(false);
+      copyTextToClipboard(text, '오늘의 음주 리포트가 클립보드에 복사되었습니다! 🍶');
+    });
+  }
+
+  if (undoLastShotBtn) {
+    undoLastShotBtn.addEventListener('click', undoLastDrinkShot);
+  }
+
+  if (closeMilestoneBtn) {
+    closeMilestoneBtn.addEventListener('click', hideBottleMilestoneBanner);
+  }
+
   // Initialize
   updateHistoryBadges();
 
@@ -1858,5 +2760,8 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     renderRounds();
     calculateAndRenderResults();
+    if (state.activeTab === 'drink') {
+      switchWorkspaceTab('drink');
+    }
   }
 });

@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=20260915b">
+  <link rel="stylesheet" href="style.css?v=20261027a">
 </head>
 <body>
   <!-- Ambient Clean Dot Grid -->
@@ -102,12 +102,32 @@
         </button>
       </div>
       <p class="meeting-helper-text">
-        💡 <strong>[현재 정산 내역 저장]</strong>을 누르면 보관함에 기록 후 화면이 초기화됩니다. 이미 계산된 카톡 정산글이 있다면? <button type="button" id="inline-import-btn" class="btn-inline-link">텍스트로 불러오기</button>
+        💡 <strong>[현재 정산 내역 저장]</strong>을 누르면 정산과 주량 기록이 보관함에 함께 저장됩니다. 이미 계산된 카톡 정산글이 있다면? <button type="button" id="inline-import-btn" class="btn-inline-link">텍스트로 불러오기</button>
       </p>
     </section>
 
-    <!-- Main Workspace -->
-    <main class="app-main">
+    <!-- Mode Switcher Tabs: [💰 정산 계산기] / [🍶 주량 트래커] -->
+    <nav class="workspace-tabs-nav" aria-label="작업 화면 전환">
+      <ul class="workspace-tabs-list" role="tablist">
+        <li class="workspace-tab-item active" id="tab-item-settlement" role="presentation">
+          <button type="button" role="tab" id="tab-btn-settlement" class="workspace-tab-btn" aria-selected="true" aria-controls="panel-settlement">
+            <span class="tab-emoji">💰</span>
+            <span class="tab-label">정산 계산기</span>
+            <span class="tab-pill" id="settlement-tab-badge">0명</span>
+          </button>
+        </li>
+        <li class="workspace-tab-item" id="tab-item-drink" role="presentation">
+          <button type="button" role="tab" id="tab-btn-drink" class="workspace-tab-btn" aria-selected="false" aria-controls="panel-drink">
+            <span class="tab-emoji">🍶</span>
+            <span class="tab-label">실시간 주량 트래커</span>
+            <span class="tab-pill tab-pill-soju" id="drink-tab-badge">0병 0잔</span>
+          </button>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Tab Panel 1: Main Settlement Workspace -->
+    <main class="app-main" id="panel-settlement" role="tabpanel" aria-labelledby="tab-btn-settlement">
       <!-- Left Column: Rounds Input List -->
       <section class="rounds-section" aria-label="차수별 지출 및 참석자 입력">
         <div class="section-title-row">
@@ -230,6 +250,10 @@
               </h3>
               <span class="card-sub-badge">실시간 생성</span>
             </div>
+            <button type="button" id="toggle-drink-receipt-btn" class="btn-receipt-soju-toggle" title="정산 메시지 하단에 오늘의 음주 리포트(병/잔 요약) 포함 여부 전환">
+              <span>🍶 음주 리포트 포함</span>
+              <span id="drink-receipt-badge" class="drink-receipt-badge">ON</span>
+            </button>
           </div>
 
           <div class="receipt-bubble-container">
@@ -291,6 +315,173 @@
         </div>
       </section>
     </main>
+
+    <!-- Tab Panel 2: Real-time Soju / Drink Tracker Workspace -->
+    <section class="drink-workspace" id="panel-drink" role="tabpanel" aria-labelledby="tab-btn-drink" hidden>
+      <!-- Top Summary & Sync Banner -->
+      <div class="card drink-hero-card">
+        <div class="drink-hero-top">
+          <div class="drink-hero-title-wrap">
+            <span class="drink-hero-icon">🍶</span>
+            <div>
+              <h2 class="drink-hero-title">실시간 소주 주량 체크 &amp; 1병 알림</h2>
+              <p class="drink-hero-sub">참석자가 한 잔 마실 때마다 터치하세요! 1병(기본 8잔) 달성 시 알림이 울리고 정산 명단과 자동 연동됩니다.</p>
+            </div>
+          </div>
+
+          <div class="drink-hero-controls">
+            <div class="bottle-unit-control">
+              <label for="shots-per-bottle-select">1병 기준:</label>
+              <select id="shots-per-bottle-select" class="shots-select">
+                <option value="7">7잔 (가득)</option>
+                <option value="8" selected>8잔 (표준)</option>
+                <option value="10">10잔 (반잔/일잔)</option>
+              </select>
+            </div>
+            <button type="button" id="sync-drink-to-rounds-btn" class="btn btn-sync-rounds" title="주량 트래커에 있는 인원을 정산 계산기 차수 명단으로 즉시 동기화합니다">
+              <span>⚡ 정산 차수에 인원 연동</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3-Column Metrics Summary -->
+        <div class="drink-metrics-grid">
+          <div class="drink-metric-box">
+            <span class="drink-metric-label">오늘 테이블 총 주량</span>
+            <div class="drink-metric-val-wrap">
+              <span class="drink-metric-value" id="drink-total-bottles-stat">0병 0잔</span>
+              <span class="drink-metric-sub" id="drink-total-shots-stat">(총 0잔)</span>
+            </div>
+          </div>
+          <div class="drink-metric-box">
+            <span class="drink-metric-label">오늘의 주당 MVP 👑</span>
+            <div class="drink-metric-val-wrap">
+              <span class="drink-metric-value mvp-highlight" id="drink-mvp-stat">아직 없음</span>
+            </div>
+          </div>
+          <div class="drink-metric-box">
+            <span class="drink-metric-label">1인 평균 음주량</span>
+            <div class="drink-metric-val-wrap">
+              <span class="drink-metric-value" id="drink-avg-stat">0잔</span>
+              <span class="drink-metric-sub" id="drink-active-count-stat">(0명 참여)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Drink Tracker Two-Column Grid -->
+      <div class="drink-main-grid">
+        <!-- Left: Member Soju Counter Cards -->
+        <div class="drink-left-col">
+          <!-- Add / Sync Member Bar -->
+          <div class="card drink-add-member-card">
+            <div class="drink-add-header">
+              <h3 class="card-title">
+                <span>👥 술자리 멤버 추가 &amp; 정산 연동</span>
+              </h3>
+              <label class="auto-sync-toggle-label" title="체크 시 여기서 추가한 멤버가 정산 계산기 1차 참석자 명단에도 자동으로 들어갑니다">
+                <input type="checkbox" id="auto-sync-round1-checkbox" checked>
+                <span>추가 시 1차 정산에 자동 등록</span>
+              </label>
+            </div>
+
+            <div class="drink-add-input-row">
+              <input type="text" id="drink-member-input" class="drink-member-input" placeholder="술자리 참석자 이름 입력 (여러 명은 쉼표/스페이스로 구분)">
+              <button type="button" id="drink-add-member-btn" class="btn btn-primary drink-add-btn">
+                <span>+ 멤버 추가</span>
+              </button>
+            </div>
+
+            <!-- Frequent / Past Bung Members Quick Chips -->
+            <div id="drink-frequent-wrap" class="drink-frequent-wrap" style="display: none;">
+              <div class="recommend-title">⚡ 이전 벙 / 단골 멤버 원클릭 불러오기 (주량 기록 연동)</div>
+              <div id="drink-frequent-chips" class="recommendations"></div>
+            </div>
+          </div>
+
+          <!-- Section Header for Cards -->
+          <div class="section-title-row">
+            <h3 class="section-heading">참석자별 실시간 잔 카운터</h3>
+            <div class="drink-counter-actions">
+              <span class="section-badge" id="drink-members-count-badge">0명</span>
+              <button type="button" id="reset-drink-counts-btn" class="btn-reset-mini" title="잔 수만 0잔으로 초기화">잔 수 초기화</button>
+            </div>
+          </div>
+
+          <!-- Member Soju Cards Grid -->
+          <div id="drink-members-grid" class="drink-members-grid">
+            <!-- Dynamically injected via app.js -->
+          </div>
+        </div>
+
+        <!-- Right: Live Log, Kakao Drink Report & Cumulative Hall of Fame -->
+        <div class="drink-right-col">
+          <!-- Today's Drink Report Card -->
+          <div class="card drink-report-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">
+                  <span>🍶 오늘의 음주 리포트</span>
+                </h3>
+                <span class="card-sub-badge">카톡 공유용</span>
+              </div>
+            </div>
+            <div class="receipt-bubble-container drink-report-bubble">
+              <pre id="drink-report-text" class="receipt-pre" aria-label="오늘의 음주 리포트 미리보기"></pre>
+            </div>
+            <button type="button" id="copy-drink-report-btn" class="btn btn-kakao copy-btn">
+              <span>🍶 음주 리포트만 카톡 복사</span>
+            </button>
+          </div>
+
+          <!-- Live Drinking Timeline Log Card -->
+          <div class="card drink-log-card">
+            <div class="card-header">
+              <h3 class="card-title">
+                <span>⏱️ 실시간 음주 타임라인</span>
+              </h3>
+              <button type="button" id="undo-last-shot-btn" class="btn-undo-shot" disabled title="방금 누른 잔 기록 취소">
+                <span>↩ 방금 기록 취소</span>
+              </button>
+            </div>
+            <div id="drink-live-logs" class="drink-live-logs">
+              <!-- Dynamically injected -->
+            </div>
+          </div>
+
+          <!-- Cumulative Member Drinking Encyclopedia / Hall of Fame -->
+          <div class="card drink-hof-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">
+                  <span>🏆 역대 벙 주량 도감 (누적 DB)</span>
+                </h3>
+              </div>
+              <span class="section-badge" id="hof-member-count-badge">0명 기록됨</span>
+            </div>
+            <p class="hof-helper-text">
+              💡 모임 정산을 보관함에 저장하면 브라우저 내부 DB(LocalStorage)에 개인별 누적 주량과 최고 기록이 자동 합산됩니다.
+            </p>
+            <div id="member-hall-of-fame" class="member-hof-list">
+              <!-- Dynamically injected -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1-Bottle (8 Shots) Milestone Celebration Banner -->
+    <div id="bottle-milestone-banner" class="bottle-milestone-banner" role="status" aria-live="assertive" aria-hidden="true">
+      <div class="milestone-inner">
+        <div class="milestone-icon-wrap" id="milestone-emoji">🍾</div>
+        <div class="milestone-text-wrap">
+          <div class="milestone-tag" id="milestone-tag">SOJU MILESTONE!</div>
+          <h4 class="milestone-title" id="milestone-title">승환님 소주 1병(8잔) 돌파! 🎉</h4>
+          <p class="milestone-desc" id="milestone-desc">현재 총 1병째 달리는 중입니다! 물도 한 잔 마셔주세요 💧</p>
+        </div>
+        <button type="button" id="close-milestone-btn" class="milestone-close-btn" aria-label="알림 닫기">&times;</button>
+      </div>
+    </div>
 
     <!-- Global Toast Notification -->
     <div id="toast" class="toast" role="alert" aria-live="polite">
@@ -383,6 +574,6 @@
     </footer>
   </div>
 
-  <script src="app.js?v=20260915b"></script>
+  <script src="app.js?v=20261027a"></script>
 </body>
 </html>
