@@ -2592,24 +2592,44 @@ input[type="number"] {
 }
 
 .drink-member-row {
+  --tier-color: #10b981;
+  --tier-bg: rgba(16, 185, 129, 0.06);
+  --tier-border: rgba(16, 185, 129, 0.35);
+  --spring-easing: linear(0, 0.016 0.5%, 0.06 1%, 0.226 2%, 1.116 5.4%, 1.375 6.6%, 1.527 7.7%, 1.565 8.2%, 1.585 8.8%, 1.581 9.3%, 1.559 9.8%, 1.458 10.9%, 0.937 14.3%, 0.784 15.5%, 0.693 16.6%, 0.67 17.1%, 0.657 17.7%, 0.671 18.7%, 0.729 19.8%, 1.042 23.3%, 1.13 24.5%, 1.182 25.6%, 1.201 26.7%, 1.192 27.7%, 1.156 28.8%, 0.977 32.2%, 0.925 33.4%, 0.894 34.5%, 0.882 35.6%, 0.887 36.6%, 0.907 37.7%, 1.045 42.4%, 1.069 44.5%, 1.059 46.3%, 0.979 50.9%, 0.96 53.4%, 0.966 55.3%, 1.013 59.9%, 1.024 62.3%, 0.986 71.2%, 1.008 79.9%, 0.995 88.9%, 1);
   background: #111622;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 12px;
-  padding: 0.6rem 0.72rem;
+  padding: 0.62rem 0.72rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.drink-member-row.has-bottle {
+  border-color: var(--tier-border);
+  background: linear-gradient(115deg, #111622 25%, var(--tier-bg) 100%);
+  box-shadow: 0 2px 14px -4px var(--tier-bg);
+}
+
+.drink-member-row.tier-legendary {
+  box-shadow: 0 0 18px -2px var(--tier-border);
+}
+
+.drink-member-row.tier-god {
+  border-color: #fbbf24;
+  background: linear-gradient(120deg, #111622 10%, rgba(236, 72, 153, 0.14) 50%, rgba(245, 158, 11, 0.18) 100%);
+  box-shadow: 0 0 22px rgba(245, 158, 11, 0.28);
+}
+
+.drink-row-main {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
-  transition: border-color var(--transition-fast), background-color var(--transition-fast);
-}
-
-.drink-member-row.has-bottle {
-  border-color: rgba(16, 185, 129, 0.32);
-  background: linear-gradient(90deg, #111622 0%, rgba(16, 185, 129, 0.06) 100%);
-}
-
-.drink-member-row.is-mvp {
-  border-color: rgba(245, 158, 11, 0.42);
+  width: 100%;
 }
 
 .drink-row-left {
@@ -2617,14 +2637,14 @@ input[type="number"] {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.32rem;
+  gap: 0.3rem;
 }
 
 .drink-row-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .drink-row-name-wrap {
@@ -2632,6 +2652,7 @@ input[type="number"] {
   align-items: center;
   gap: 0.3rem;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .drink-member-name {
@@ -2643,23 +2664,26 @@ input[type="number"] {
   text-overflow: ellipsis;
 }
 
-.drink-mvp-crown {
-  font-size: 0.64rem;
+.drink-tier-badge {
+  font-size: 0.62rem;
   font-weight: 800;
-  background: rgba(245, 158, 11, 0.16);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  color: #fbbf24;
-  padding: 0.04rem 0.32rem;
+  background: var(--tier-bg);
+  border: 1px solid var(--tier-border);
+  color: var(--tier-color);
+  padding: 0.05rem 0.36rem;
   border-radius: 999px;
+  white-space: nowrap;
   flex-shrink: 0;
+  letter-spacing: -0.01em;
 }
 
-.drink-bottle-pill-mini {
-  font-size: 0.64rem;
+.drink-mvp-crown {
+  font-size: 0.62rem;
   font-weight: 800;
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  padding: 0.04rem 0.32rem;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fbbf24;
+  padding: 0.05rem 0.34rem;
   border-radius: 999px;
   flex-shrink: 0;
 }
@@ -2667,14 +2691,14 @@ input[type="number"] {
 .drink-row-count {
   display: flex;
   align-items: baseline;
-  gap: 0.25rem;
+  gap: 0.22rem;
   flex-shrink: 0;
 }
 
 .drink-bottle-badge {
   font-size: 0.86rem;
   font-weight: 800;
-  color: #34d399;
+  color: var(--tier-color);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2699,14 +2723,87 @@ input[type="number"] {
   background: rgba(255, 255, 255, 0.07);
   overflow: hidden;
   position: relative;
+  transition: background-color 0.2s ease;
 }
 
 .soju-micro-seg.filled {
-  background: #10b981;
+  background: var(--tier-color);
+  box-shadow: 0 0 6px var(--tier-bg);
 }
 
 .soju-micro-seg.half {
-  background: linear-gradient(90deg, #10b981 50%, rgba(255, 255, 255, 0.07) 50%);
+  background: linear-gradient(90deg, var(--tier-color) 50%, rgba(255, 255, 255, 0.07) 50%);
+}
+
+/* Chamisul Bottle Lineup Rack & Witty Quote Footer */
+.drink-row-visual-tray {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.32rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.chamisul-bottle-rack {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  flex-wrap: wrap;
+  min-height: 28px;
+}
+
+.chamisul-bottle-item {
+  width: 15px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transform-origin: bottom center;
+}
+
+.chamisul-bottle-item.is-completed {
+  filter: drop-shadow(0 0 4px var(--tier-bg));
+}
+
+.chamisul-bottle-item.pop-anim {
+  animation: bottleSpringPop 0.65s ease-out forwards;
+  animation-timing-function: var(--spring-easing);
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@supports not (animation-timing-function: linear(0, 1)) {
+  .chamisul-bottle-item.pop-anim {
+    animation-duration: 0.35s;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+}
+
+@keyframes bottleSpringPop {
+  0% {
+    transform: scale(0.4) translateY(6px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+
+.drink-row-quote {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: right;
+  line-height: 1.3;
+  flex: 1;
+  min-width: 110px;
+  word-break: keep-all;
+}
+
+.drink-member-row.has-bottle .drink-row-quote {
+  color: #e2e8f0;
 }
 
 /* Right Side Thumb Stepper Controls */
@@ -2755,13 +2852,13 @@ input[type="number"] {
 }
 
 .btn-shot-half:hover {
-  background: rgba(16, 185, 129, 0.16);
-  border-color: rgba(16, 185, 129, 0.35);
-  color: #6ee7b7;
+  background: var(--tier-bg);
+  border-color: var(--tier-border);
+  color: var(--tier-color);
 }
 
 .btn-shot-plus {
-  background: #10b981;
+  background: var(--tier-color);
   color: #052e16;
   border: none;
   border-radius: 8px;
@@ -2775,15 +2872,23 @@ input[type="number"] {
   justify-content: center;
   gap: 0.2rem;
   font-family: var(--font-family);
-  transition: transform 0.08s ease, filter 0.12s ease;
+  transition: transform 0.08s ease, filter 0.12s ease, background-color 0.2s ease;
+}
+
+.btn-shot-plus.dark-text {
+  color: #090d16;
+}
+
+.btn-shot-plus.light-text {
+  color: #ffffff;
 }
 
 .btn-shot-plus:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.1);
 }
 
 .btn-shot-plus:active {
-  transform: scale(0.94);
+  transform: scale(0.92);
 }
 
 /* Primary Share CTA */
@@ -2943,26 +3048,91 @@ input[type="number"] {
   color: var(--text-muted);
 }
 
-/* 1-Bottle Milestone Celebration Banner */
+/* Particle & Floating Text Game FX Layer */
+.soju-fx-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1200;
+  overflow: hidden;
+}
+
+.soju-float-text {
+  position: fixed;
+  font-size: 0.88rem;
+  font-weight: 900;
+  pointer-events: none;
+  z-index: 1205;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+  animation: floatUpShot 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 0.01s;
+  }
+}
+
+@keyframes floatUpShot {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(0.85);
+  }
+  40% {
+    opacity: 1;
+    transform: translate(-50%, -22px) scale(1.12);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -44px) scale(0.95);
+  }
+}
+
+.soju-particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1201;
+  font-size: 1.1rem;
+  will-change: transform, opacity;
+  animation: particleExplode 1.15s cubic-bezier(0.12, 0.8, 0.28, 1) forwards;
+  @media (prefers-reduced-motion: reduce) {
+    display: none;
+  }
+}
+
+@keyframes particleExplode {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.15) rotate(var(--rot));
+  }
+}
+
+/* 1-Bottle Milestone Celebration Banner (RPG Level-Up Style) */
 .bottle-milestone-banner {
+  --ms-color: #10b981;
+  --ms-bg: #064e3b;
   position: fixed;
   top: 1rem;
   left: 50%;
-  transform: translate(-50%, -140%);
-  z-index: 1100;
-  width: min(430px, calc(100vw - 24px));
-  background: #064e3b;
-  border: 1.5px solid #10b981;
-  border-radius: 14px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65);
-  padding: 0.8rem 0.95rem;
+  transform: translate(-50%, -150%) scale(0.92);
+  z-index: 1210;
+  width: min(440px, calc(100vw - 24px));
+  background: linear-gradient(135deg, var(--ms-bg) 0%, #0f172a 90%);
+  border: 2px solid var(--ms-color);
+  border-radius: 16px;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.75), 0 0 28px -4px var(--ms-color);
+  padding: 0.85rem 1rem;
   opacity: 0;
   visibility: hidden;
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease;
 }
 
 .bottle-milestone-banner.show {
-  transform: translate(-50%, 0);
+  transform: translate(-50%, 0) scale(1);
   opacity: 1;
   visibility: visible;
 }
@@ -2970,16 +3140,19 @@ input[type="number"] {
 .milestone-inner {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.8rem;
 }
 
 .milestone-icon-wrap {
-  font-size: 1.7rem;
-  line-height: 1;
-  background: rgba(16, 185, 129, 0.2);
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  border-radius: 10px;
-  padding: 0.4rem;
+  width: 46px;
+  height: 54px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid var(--ms-color);
+  border-radius: 12px;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
@@ -2989,22 +3162,25 @@ input[type="number"] {
 }
 
 .milestone-tag {
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  color: #34d399;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: var(--ms-color);
+  text-transform: uppercase;
 }
 
 .milestone-title {
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 800;
   color: #ffffff;
-  margin: 0.08rem 0;
+  margin: 0.1rem 0 0.15rem;
 }
 
 .milestone-desc {
-  font-size: 0.74rem;
-  color: #a7f3d0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  line-height: 1.35;
 }
 
 .milestone-close-btn {

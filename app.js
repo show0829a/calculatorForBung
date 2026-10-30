@@ -1515,6 +1515,411 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // ==========================================================================
+  // RPG-Style Chamisul Tier System (0병 ~ 10병+) & Visual FX Engine
+  // ==========================================================================
+
+  const SOJU_TIERS = [
+    {
+      level: 0,
+      rank: 'Lv.0 워밍업',
+      badge: '🌱 워밍업',
+      color: '#10b981',
+      bg: 'rgba(16, 185, 129, 0.08)',
+      border: 'rgba(16, 185, 129, 0.25)',
+      capColor: '#16a34a',
+      dewColor: '#0ea5e9',
+      btnTextClass: 'dark-text',
+      quotesZero: [
+        '아직 첫 잔 전! 오늘 컨디션 탐색 중 👀',
+        '간 보호막 100% 충전 완료! 첫 잔 대기 중 🛡️',
+        '안주 먼저 든든하게 챙기는 스마트파 筷'
+      ],
+      quotesEarly: [
+        '첫 잔은 달콤하게! 입가심 시동 걸렸습니다 🍶',
+        '목넘김이 아주 깔끔합니다! 워밍업 순항 중 ✨',
+        '크~ 첫 잔부터 텐션 올라가는 소리 들립니다 🎵',
+        '오늘 술이 달다 달아! 기분 좋은 출발 🌱'
+      ],
+      quotesHalf: [
+        '어느덧 반 병 돌파! 볼이 살짝 발그레~ 😊',
+        '반 병 클리어! 이제부터 진짜 술자리 시작이죠 🔥',
+        '텐션 예열 50% 완료! 대화가 술술 풀립니다 💬',
+        '참이슬 두꺼비가 슬슬 미소 짓기 시작합니다 🐸'
+      ],
+      quotesAlmost: [
+        '1병까지 딱 한두 잔 남았습니다! 막잔 카운트다운 ⏳',
+        '첫 병 클리어 직전! 잔 비우고 새 병 시켜요 🍾',
+        '거의 다 비웠다! 깔끔하게 1병 채워봅시다 💪'
+      ]
+    },
+    {
+      level: 1,
+      rank: 'Lv.1 후레쉬 입문',
+      badge: '💧 1병 후레쉬',
+      color: '#06b6d4',
+      bg: 'rgba(6, 182, 212, 0.11)',
+      border: 'rgba(6, 182, 212, 0.42)',
+      capColor: '#0284c7',
+      dewColor: '#0284c7',
+      btnTextClass: 'dark-text',
+      quotes: [
+        '기분 딱 좋은 1병! 지금부터 말술 모드 발동 💧',
+        '1병 가볍게 클리어! 간이 이제야 일을 시작합니다 🏃',
+        '참이슬 한 병 뚝딱! 아직 눈빛이 아주 초롱초롱해요 ✨',
+        '워밍업 1병 완료! 물 한 컵 마시고 2병 가즈아 🌊',
+        '깔끔하게 한 병 비웠습니다! 오늘 폼 미쳤다 👏'
+      ]
+    },
+    {
+      level: 2,
+      rank: 'Lv.2 오리지널 각성',
+      badge: '🔥 2병 각성',
+      color: '#3b82f6',
+      bg: 'rgba(59, 130, 246, 0.13)',
+      border: 'rgba(59, 130, 246, 0.48)',
+      capColor: '#2563eb',
+      dewColor: '#dc2626',
+      btnTextClass: 'light-text',
+      quotes: [
+        '2병 돌파! 혀가 슬슬 풀리고 드립력이 +50 상승합니다 🎤',
+        '진정한 주당의 기본 소양 2병! 텐션이 우주로 갑니다 🚀',
+        '안주 없이도 술이 달콤해지는 마법의 2병 구간 🪄',
+        '두 병째 클리어! 테이블 분위기를 완전히 장악했습니다 🔥',
+        '여기서부턴 프로의 영역! 2병도 거뜬하네요 👍'
+      ]
+    },
+    {
+      level: 3,
+      rank: 'Lv.3 빨간뚜껑 장인',
+      badge: '🌶️ 3병 장인',
+      color: '#a855f7',
+      bg: 'rgba(168, 85, 247, 0.14)',
+      border: 'rgba(168, 85, 247, 0.52)',
+      capColor: '#dc2626',
+      dewColor: '#dc2626',
+      btnTextClass: 'light-text',
+      quotes: [
+        '3병 돌파! 소주병이 초록색 별빛으로 보이기 시작합니다 🌟',
+        '영웅 등급 진입! 빨간 뚜껑도 물처럼 마시는 경지 🌶️',
+        '3병 클리어! 내일 아침의 나에게 모든 걸 위임합니다 🙏',
+        '주량 측정기 과열 주의! 3병을 눈 깜짝할 새 비웠어요 ⚡',
+        '이 구역의 참이슬 홍보대사! 3병 달성 축하합니다 🎊'
+      ]
+    },
+    {
+      level: 4,
+      rank: 'Lv.4 두꺼비 수호자',
+      badge: '🐸 4병 수호자',
+      color: '#ec4899',
+      bg: 'rgba(236, 72, 153, 0.15)',
+      border: 'rgba(236, 72, 153, 0.56)',
+      capColor: '#dc2626',
+      dewColor: '#ec4899',
+      btnTextClass: 'light-text',
+      quotes: [
+        '4병 돌파! 진로 두꺼비와 형동생 하기로 합의했습니다 🐸🤝',
+        '혼자서 4병(32잔)! 간이 "살려줘" 모스부호를 치고 있어요 🆘',
+        '기억 저장소 용량 80% 초과! 지금부턴 본능으로 마십니다 🧠',
+        '4병 클리어! 술자리 역사에 길이 남을 하이텐션 💃',
+        '사장님이 빈 병 세다가 눈을 의심하고 계십니다 👀🍾'
+      ]
+    },
+    {
+      level: 5,
+      rank: 'Lv.5 레전드 주당',
+      badge: '👑 5병 레전드',
+      color: '#f59e0b',
+      bg: 'rgba(245, 158, 11, 0.16)',
+      border: 'rgba(245, 158, 11, 0.65)',
+      capColor: '#f59e0b',
+      dewColor: '#dc2626',
+      btnTextClass: 'dark-text',
+      quotes: [
+        '👑 전설의 5병(40잔)! 혈관에 혈액 대신 참이슬이 흐릅니다!',
+        '5병 돌파! 하이트진로 명예 주주 총회 초청장 발송 중 📜',
+        '전설 등급 달성! 옆 테이블에서도 경외의 눈빛을 보냅니다 ✨',
+        '5병 클리어! 이 정도면 간이 티타늄 합금으로 되어 있습니다 🛡️',
+        '오늘 벙의 살아있는 신화! 5병 고지를 점령했습니다 🏔️'
+      ]
+    },
+    {
+      level: 6,
+      rank: 'Lv.6 인간 정수기',
+      badge: '🌋 6병 초월자',
+      color: '#f97316',
+      bg: 'rgba(249, 115, 22, 0.17)',
+      border: 'rgba(249, 115, 22, 0.68)',
+      capColor: '#ea580c',
+      dewColor: '#f59e0b',
+      btnTextClass: 'light-text',
+      quotes: [
+        '6병 돌파! 알코올을 수분으로 치환하는 인간 정수기 등극 🚰',
+        '무려 48잔! 소주 1/4 짝을 혼자 비워버린 괴물 주량 👹',
+        '6병 클리어! 중력의 법칙을 거스르는 초월자의 영역 🌌',
+        '술이 술을 마시는 경지! 6병째도 흔들림이 없습니다 🔥',
+        '가게 냉장고 참이슬 재고 비상 경보 발령! 🚨'
+      ]
+    },
+    {
+      level: 7,
+      rank: 'Lv.7 주류계 지배자',
+      badge: '⚡ 7병 지배자',
+      color: '#ef4444',
+      bg: 'rgba(239, 68, 68, 0.18)',
+      border: 'rgba(239, 68, 68, 0.72)',
+      capColor: '#dc2626',
+      dewColor: '#facc15',
+      btnTextClass: 'light-text',
+      quotes: [
+        '럭키 7병 돌파! 행운 대신 숙취 면역권을 획득하셨습니다 🍀',
+        '7병(56잔)! 이쯤 되면 참이슬 공장에서 직통 파이프 연결해야 합니다 🔧',
+        '주류계의 절대 지배자! 7병 앞에서도 평온한 표정 ⚡',
+        '7병 클리어! 과학계에서 연구 대상으로 섭외 요청이 들어왔습니다 🔬'
+      ]
+    },
+    {
+      level: 8,
+      rank: 'Lv.8 불멸의 디오니소스',
+      badge: '🏛️ 8병 불멸자',
+      color: '#e11d48',
+      bg: 'rgba(225, 29, 72, 0.19)',
+      border: 'rgba(225, 29, 72, 0.76)',
+      capColor: '#be123c',
+      dewColor: '#fde047',
+      btnTextClass: 'light-text',
+      quotes: [
+        '8병(64잔) 돌파! 올림푸스 술의 신 디오니소스가 무릎을 꿇었습니다 🏛️',
+        '8병 클리어! 숨만 쉬어도 주변 공기가 16.5도로 바뀝니다 🌬️',
+        '불멸자 등급! 인간의 한계를 아득히 초월한 주량입니다 ♾️',
+        '빈 병으로 성벽을 쌓고 계십니다! 경이로운 8병 돌파 🏰'
+      ]
+    },
+    {
+      level: 9,
+      rank: 'Lv.9 우주의 주신',
+      badge: '🌌 9병 우주신',
+      color: '#c026d3',
+      bg: 'rgba(192, 38, 211, 0.20)',
+      border: 'rgba(192, 38, 211, 0.80)',
+      capColor: '#a21caf',
+      dewColor: '#38bdf8',
+      btnTextClass: 'light-text',
+      quotes: [
+        '9병(72잔) 돌파! 해장국이 두려움에 떨며 도망가고 있습니다 🍲💨',
+        '만렙 직전 9병! 은하계 최강의 간을 보유하신 분 🌌',
+        '9병 클리어! 이제 소주병이 알아서 잔에 술을 따르고 있습니다 🛸',
+        '전설을 넘어 신화로! 10병 만렙까지 단 한 걸음 남았습니다 🔥'
+      ]
+    },
+    {
+      level: 10,
+      rank: 'Lv.MAX 주신(酒神) 강림',
+      badge: '🌈 10병+ 주신강림',
+      color: '#38bdf8',
+      bg: 'rgba(56, 189, 248, 0.22)',
+      border: 'rgba(244, 63, 94, 0.85)',
+      capColor: '#facc15',
+      dewColor: '#f43f5e',
+      btnTextClass: 'dark-text',
+      quotes: [
+        '🌈 [서버 최초] 10병(80잔) 돌파! 주신(酒神)이 강림하셨습니다!! 🙇‍♂️',
+        '👑 10병 만렙 달성! 당신을 대한민국 주류 역사상 최고 존엄으로 임명합니다!',
+        '🚨 10병 돌파!! 계산기 과부하! 혹시 물 마시고 버튼만 누르시는 거 아니죠?! 😂',
+        '🌌 초월 만렙 10병+! 하이트진로 평생 VIP 황금 두꺼비상 수상자 🏆'
+      ]
+    }
+  ];
+
+  function getSojuTierInfo(bottles) {
+    const idx = Math.max(0, Math.min(10, Math.floor(bottles)));
+    return SOJU_TIERS[idx];
+  }
+
+  function pickQuoteForMember(name, shots, spb, forceNewRandom = false) {
+    const memberObj = state.drinkTracker && state.drinkTracker.members
+      ? state.drinkTracker.members[name]
+      : null;
+    const bottles = Math.floor(shots / spb);
+    const tier = getSojuTierInfo(bottles);
+    const progress = shots - (bottles * spb);
+
+    let pool = [];
+    if (bottles === 0) {
+      if (shots <= 0) {
+        pool = tier.quotesZero;
+      } else if (progress >= spb - 1.5) {
+        pool = tier.quotesAlmost;
+      } else if (progress >= spb / 2) {
+        pool = tier.quotesHalf;
+      } else {
+        pool = tier.quotesEarly;
+      }
+    } else {
+      pool = tier.quotes || SOJU_TIERS[10].quotes;
+      // Add subtle sub-stage flavor if halfway to next bottle
+      if (!forceNewRandom && progress >= spb / 2) {
+        pool = [
+          ...pool,
+          `${bottles}병 반 돌파! ${bottles + 1}병 승급전이 눈앞입니다 🔥`
+        ];
+      }
+    }
+
+    if (!forceNewRandom && memberObj && memberObj.lastQuote && memberObj.lastQuoteShots === shots) {
+      return memberObj.lastQuote;
+    }
+
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
+    if (memberObj) {
+      memberObj.lastQuote = chosen;
+      memberObj.lastQuoteShots = shots;
+    }
+    return chosen;
+  }
+
+  function createChamisulBottleSvg(fillRatio = 1, bottleNum = 1, tierInfo = SOJU_TIERS[1], isLarge = false) {
+    const clampedFill = Math.max(0, Math.min(1, fillRatio));
+    const uid = `chamisul_${bottleNum}_${Math.random().toString(36).slice(2, 7)}`;
+    const capColor = tierInfo ? tierInfo.capColor : '#16a34a';
+    const dewColor = tierInfo ? tierInfo.dewColor : '#0284c7';
+    const isRedOriginal = bottleNum >= 3;
+    const labelBandColor = isRedOriginal ? '#dc2626' : '#16a34a';
+
+    // Liquid y ranges from y=60 (empty) to y=22 (full, 38px height)
+    const liquidHeight = Math.round(clampedFill * 38);
+    const liquidY = 60 - liquidHeight;
+
+    const svgClass = isLarge ? 'chamisul-svg-large' : 'chamisul-svg';
+
+    return `
+      <svg class="${svgClass}" viewBox="0 0 28 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <clipPath id="${uid}">
+            <path d="M10.5 3.5 H17.5 V15 C17.5 19.5 23.5 22.5 23.5 29 V57.5 C23.5 60 21.8 61.5 19.5 61.5 H8.5 C6.2 61.5 4.5 60 4.5 57.5 V29 C4.5 22.5 10.5 19.5 10.5 15 Z" />
+          </clipPath>
+          <linearGradient id="${uid}_glass" x1="4" y1="15" x2="24" y2="61" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#22c55e" stop-opacity="${clampedFill > 0 ? '0.52' : '0.22'}" />
+            <stop offset="50%" stop-color="#15803d" stop-opacity="${clampedFill > 0 ? '0.68' : '0.28'}" />
+            <stop offset="100%" stop-color="#14532d" stop-opacity="${clampedFill > 0 ? '0.82' : '0.35'}" />
+          </linearGradient>
+          <linearGradient id="${uid}_liq" x1="14" y1="22" x2="14" y2="61" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#4ade80" stop-opacity="0.92" />
+            <stop offset="40%" stop-color="#16a34a" stop-opacity="0.95" />
+            <stop offset="100%" stop-color="#15803d" stop-opacity="0.98" />
+          </linearGradient>
+        </defs>
+
+        <!-- Bottle Body Base & Clipped Contents -->
+        <g clip-path="url(#${uid})">
+          <!-- Green Glass Base -->
+          <rect x="3" y="2" width="22" height="60" fill="url(#${uid}_glass)" />
+
+          <!-- Dynamic Soju Liquid Level -->
+          ${clampedFill > 0 ? `
+            <rect x="3" y="${liquidY}" width="22" height="${liquidHeight + 3}" fill="url(#${uid}_liq)" />
+            <ellipse cx="14" cy="${liquidY}" rx="9.5" ry="1.6" fill="#86efac" fill-opacity="0.85" />
+          ` : ''}
+
+          <!-- Chamisul White Curved Label -->
+          <rect x="4.5" y="32" width="19" height="17.5" fill="#ffffff" fill-opacity="${clampedFill > 0 ? '0.96' : '0.65'}" />
+          <!-- Label Top Wave Band (Green for Fresh, Red for Original 3병+) -->
+          <path d="M4.5 32 H23.5 V35.2 Q14 37.2 4.5 35.2 Z" fill="${labelBandColor}" />
+          <!-- Label Bottom Thin Band -->
+          <rect x="4.5" y="48" width="19" height="1.5" fill="${labelBandColor}" />
+
+          <!-- Iconic Dewdrop Emblem on Label -->
+          <path d="M20 37.5 C20 37.5 21.6 39.6 21.6 40.8 C21.6 41.7 20.9 42.4 20 42.4 C19.1 42.4 18.4 41.7 18.4 40.8 C18.4 39.6 20 37.5 20 37.5 Z" fill="${dewColor}" />
+
+          <!-- Chamisul Typography Marks -->
+          <text x="12.5" y="43.8" text-anchor="middle" fill="#0f172a" font-size="5.3" font-weight="900" font-family="Pretendard, sans-serif" letter-spacing="-0.4">참이슬</text>
+          <text x="14" y="47.2" text-anchor="middle" fill="${labelBandColor}" font-size="3.1" font-weight="800" font-family="Pretendard, sans-serif">${bottleNum}병</text>
+
+          <!-- Screw Cap & Neck Ring -->
+          <rect x="9.5" y="2.5" width="9" height="6.2" fill="${capColor}" />
+          <rect x="9.5" y="7.5" width="9" height="1.3" fill="#ffffff" fill-opacity="0.85" />
+          <rect x="9.5" y="9.4" width="9" height="1.6" fill="${capColor}" />
+
+          <!-- Left Glass Specular Highlight -->
+          <path d="M7.2 26 V56" stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" stroke-opacity="0.42" />
+          <path d="M12 11 V16" stroke="#ffffff" stroke-width="1" stroke-linecap="round" stroke-opacity="0.38" />
+        </g>
+
+        <!-- Bottle Crisp Outer Contour -->
+        <path d="M10.5 3.5 H17.5 V15 C17.5 19.5 23.5 22.5 23.5 29 V57.5 C23.5 60 21.8 61.5 19.5 61.5 H8.5 C6.2 61.5 4.5 60 4.5 57.5 V29 C4.5 22.5 10.5 19.5 10.5 15 Z"
+              stroke="${clampedFill >= 1 ? tierInfo.color : 'rgba(74, 222, 128, 0.55)'}"
+              stroke-width="${clampedFill >= 1 ? '1.35' : '1'}"
+              stroke-opacity="${clampedFill > 0 ? '0.95' : '0.45'}" />
+      </svg>
+    `;
+  }
+
+  function spawnFloatingShotText(anchorEl, text, color = '#34d399') {
+    const fxLayer = document.getElementById('soju-fx-layer');
+    if (!fxLayer || !anchorEl) return;
+
+    const rect = anchorEl.getBoundingClientRect();
+    const floatEl = document.createElement('div');
+    floatEl.className = 'soju-float-text';
+    floatEl.textContent = text;
+    floatEl.style.color = color;
+
+    const jitterX = (Math.random() - 0.5) * 24;
+    floatEl.style.left = `${rect.left + rect.width / 2 + jitterX}px`;
+    floatEl.style.top = `${rect.top - 6}px`;
+
+    fxLayer.appendChild(floatEl);
+    setTimeout(() => {
+      floatEl.remove();
+    }, 950);
+  }
+
+  function spawnSojuConfettiBurst(tierInfo) {
+    const fxLayer = document.getElementById('soju-fx-layer');
+    if (!fxLayer) return;
+
+    const centerX = window.innerWidth / 2;
+    const centerY = Math.min(220, window.innerHeight * 0.28);
+    const palette = [
+      tierInfo.color,
+      tierInfo.capColor,
+      '#4ade80',
+      '#facc15',
+      '#38bdf8',
+      '#f472b6',
+      '#ffffff'
+    ];
+
+    const count = tierInfo.level >= 5 ? 36 : 24;
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('span');
+      p.className = 'soju-particle';
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.35;
+      const dist = 55 + Math.random() * 130;
+      const tx = `${Math.cos(angle) * dist}px`;
+      const ty = `${Math.sin(angle) * dist - 20}px`;
+      const rot = `${Math.round((Math.random() - 0.5) * 520)}deg`;
+
+      p.style.left = `${centerX}px`;
+      p.style.top = `${centerY}px`;
+      p.style.background = palette[i % palette.length];
+      p.style.setProperty('--tx', tx);
+      p.style.setProperty('--ty', ty);
+      p.style.setProperty('--rot', rot);
+
+      if (i % 3 === 0) {
+        p.style.width = '6px';
+        p.style.height = '12px';
+        p.style.borderRadius = '2px';
+      }
+
+      fxLayer.appendChild(p);
+      setTimeout(() => {
+        p.remove();
+      }, 1050);
+    }
+  }
+
   let milestoneBannerTimer = null;
 
   function triggerBottleMilestone(name, bottleCount, totalShots, shotsPerBottle) {
@@ -1523,37 +1928,35 @@ document.addEventListener('DOMContentLoaded', () => {
     // Haptic vibration on mobile if supported
     if (navigator.vibrate) {
       try {
-        navigator.vibrate([120, 60, 160]);
+        navigator.vibrate(bottleCount >= 5 ? [100, 40, 120, 40, 220] : [120, 60, 160]);
       } catch (e) {}
     }
 
-    let emoji = '🍾';
-    let tag = `SOJU ${bottleCount} BOTTLE MILESTONE!`;
-    let title = `🎉 ${name}님 소주 ${bottleCount}병(${formatShotCount(totalShots)}잔) 돌파!`;
-    let desc = '기분 좋은 1병 달성! 중간에 물도 한 잔씩 마셔주세요 💧';
+    const tier = getSojuTierInfo(bottleCount);
+    const quote = pickQuoteForMember(name, totalShots, shotsPerBottle, true);
 
-    if (bottleCount === 2) {
-      emoji = '🔥';
-      title = `🔥 ${name}님 소주 2병(${formatShotCount(totalShots)}잔) 돌파!`;
-      desc = '오늘 텐션 최고조! 주당의 품격을 보여주고 계십니다 🍶';
-    } else if (bottleCount >= 3) {
-      emoji = '👑';
-      title = `👑 전설의 주신! ${name}님 ${bottleCount}병(${formatShotCount(totalShots)}잔) 돌파!`;
-      desc = `오늘 벙의 살아있는 전설입니다! 안주와 수분 섭취 필수 🚨`;
+    bottleMilestoneBanner.style.setProperty('--ms-color', tier.color);
+    bottleMilestoneBanner.style.setProperty('--ms-bg', tier.bg);
+
+    const tag = `${tier.rank} · CHAMISUL ${bottleCount}병 달성!`;
+    const title = `🎉 ${name}님 참이슬 ${bottleCount}병(${formatShotCount(totalShots)}잔) 돌파!`;
+
+    if (milestoneEmoji) {
+      milestoneEmoji.innerHTML = createChamisulBottleSvg(1, bottleCount, tier, true);
     }
-
-    if (milestoneEmoji) milestoneEmoji.textContent = emoji;
     if (milestoneTag) milestoneTag.textContent = tag;
     if (milestoneTitle) milestoneTitle.textContent = title;
-    if (milestoneDesc) milestoneDesc.textContent = desc;
+    if (milestoneDesc) milestoneDesc.textContent = `"${quote}"`;
 
     bottleMilestoneBanner.classList.add('show');
     bottleMilestoneBanner.setAttribute('aria-hidden', 'false');
 
+    spawnSojuConfettiBurst(tier);
+
     clearTimeout(milestoneBannerTimer);
     milestoneBannerTimer = setTimeout(() => {
       hideBottleMilestoneBanner();
-    }, 4500);
+    }, 4800);
   }
 
   function hideBottleMilestoneBanner() {
@@ -1562,7 +1965,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bottleMilestoneBanner.setAttribute('aria-hidden', 'true');
   }
 
-  function addDrinkShots(name, delta) {
+  function addDrinkShots(name, delta, anchorEl = null) {
     if (!state.drinkTracker.members[name]) {
       state.drinkTracker.members[name] = { shots: 0, updatedAt: Date.now() };
     }
@@ -1579,6 +1982,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     state.drinkTracker.members[name].shots = nextShots;
     state.drinkTracker.members[name].updatedAt = Date.now();
+    state.drinkTracker.members[name].lastPopBottle = crossedMilestone ? nextBottles : 0;
+
+    // Pick a fresh depth-specific quote on every shot change
+    pickQuoteForMember(name, nextShots, spb, true);
+
+    const tier = getSojuTierInfo(nextBottles);
+    if (anchorEl && delta > 0) {
+      const floatLabel = crossedMilestone
+        ? `🍾 ${nextBottles}병 돌파!!`
+        : (delta === 0.5 ? '+반잔 💧' : `+1잔! (${formatShotCount(nextShots)}잔)`);
+      spawnFloatingShotText(anchorEl, floatLabel, tier.color);
+    }
 
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
@@ -1613,8 +2028,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const lastLog = state.drinkTracker.logs.shift();
     if (lastLog && state.drinkTracker.members[lastLog.name]) {
-      state.drinkTracker.members[lastLog.name].shots = Math.max(0, Number((lastLog.prevShots || 0).toFixed(1)));
-      showToastMessage(`${lastLog.name}님의 방금 기록을 취소했습니다 (${formatShotCount(state.drinkTracker.members[lastLog.name].shots)}잔)`);
+      const spb = state.drinkTracker.shotsPerBottle || 8;
+      const restored = Math.max(0, Number((lastLog.prevShots || 0).toFixed(1)));
+      state.drinkTracker.members[lastLog.name].shots = restored;
+      state.drinkTracker.members[lastLog.name].lastPopBottle = 0;
+      pickQuoteForMember(lastLog.name, restored, spb, true);
+      showToastMessage(`${lastLog.name}님의 방금 기록을 취소했습니다 (${formatShotCount(restored)}잔)`);
     }
 
     calculateAndRenderResults();
@@ -1655,21 +2074,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (entries.length === 0 || totalShots === 0) {
-      return `[🍶 ${state.meetingTitle} 음주 리포트]\n아직 기록된 소주 잔 수가 없습니다.\n술자리에서 [+1잔 마심!] 버튼을 눌러 주량을 체크해 보세요!`;
+      return `[🍶 ${state.meetingTitle} 음주 리포트]\n아직 기록된 소주 잔 수가 없습니다.\n술자리에서 [+1잔] 버튼을 눌러 참이슬 주량을 체크해 보세요!`;
     }
 
     const maxShots = activeDrinkers.length > 0 ? activeDrinkers[0].shots : 0;
     const mvpNames = activeDrinkers.filter(d => d.shots === maxShots).map(d => d.name);
 
-    let text = `[🍶 오늘의 주량 리포트 (총 ${formatBottlesAndShots(totalShots, spb)} / ${formatShotCount(totalShots)}잔)]\n`;
+    let text = `[🍶 오늘의 참이슬 주량 리포트 (총 ${formatBottlesAndShots(totalShots, spb)} / ${formatShotCount(totalShots)}잔)]\n`;
     if (mvpNames.length > 0 && maxShots > 0) {
       text += `🏆 오늘의 주당 MVP: ${mvpNames.join(', ')} (${formatBottlesAndShots(maxShots, spb)})\n`;
     }
 
     activeDrinkers.forEach(item => {
       const bottles = Math.floor(item.shots / spb);
-      const fireTag = bottles >= 2 ? ' 🔥' : (bottles === 1 ? ' 🍾' : '');
-      text += `• ${item.name}: ${formatBottlesAndShots(item.shots, spb)} (${formatShotCount(item.shots)}잔)${fireTag}\n`;
+      const tier = getSojuTierInfo(bottles);
+      text += `• ${item.name} [${tier.badge}]: ${formatBottlesAndShots(item.shots, spb)} (${formatShotCount(item.shots)}잔)\n`;
     });
 
     const nonDrinkers = entries.filter(item => item.shots === 0).map(i => i.name);
@@ -1677,7 +2096,7 @@ document.addEventListener('DOMContentLoaded', () => {
       text += `• 비음주/0잔: ${nonDrinkers.join(', ')}\n`;
     }
 
-    text += `(※ 1병 = ${spb}잔 기준)`;
+    text += `(※ 참이슬 1병 = ${spb}잔 기준)`;
     return text.trim();
   }
 
@@ -1916,7 +2335,7 @@ document.addEventListener('DOMContentLoaded', () => {
       drinkMembersCountBadge.textContent = `총 ${memberNames.length}명`;
     }
 
-    // Render Compact App-Style Member Rows
+    // Render Compact App-Style Member Rows with Chamisul Lineup & RPG Tier Styling
     drinkMembersGrid.innerHTML = '';
 
     if (memberNames.length === 0) {
@@ -1934,8 +2353,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const isMvp = maxShots > 0 && shots === maxShots;
         const isHost = state.hostName === name;
 
+        const tier = getSojuTierInfo(bottles);
+        const quoteText = pickQuoteForMember(name, shots, spb, false);
+
         const row = document.createElement('div');
-        row.className = `drink-member-row ${bottles >= 1 ? 'has-bottle' : ''} ${isMvp ? 'is-mvp' : ''}`;
+        const specialTierClass = bottles >= 10 ? 'tier-god' : (bottles >= 5 ? 'tier-legendary' : '');
+        row.className = `drink-member-row ${bottles >= 1 ? 'has-bottle' : ''} ${isMvp ? 'is-mvp' : ''} ${specialTierClass}`.trim();
+        row.style.setProperty('--tier-color', tier.color);
+        row.style.setProperty('--tier-bg', tier.bg);
+        row.style.setProperty('--tier-border', tier.border);
 
         // Build micro 8-segment gauge bar
         let segsHtml = '';
@@ -1945,36 +2371,97 @@ document.addEventListener('DOMContentLoaded', () => {
           segsHtml += `<span class="soju-micro-seg ${isFilled ? 'filled' : (isHalf ? 'half' : '')}"></span>`;
         }
 
-        row.innerHTML = `
-          <div class="drink-row-left">
-            <div class="drink-row-header">
-              <div class="drink-row-name-wrap">
-                <span class="drink-member-name">${isHost ? '👑 ' : ''}${name}</span>
-                ${isMvp ? '<span class="drink-mvp-crown">MVP</span>' : ''}
-                ${bottles > 0 ? `<span class="drink-bottle-pill-mini">🍾×${bottles}</span>` : ''}
+        // Build realistic Chamisul bottle lineup (1병 ~ 10병+)
+        let bottlesRackHtml = '';
+        const maxDisplayBottles = Math.min(bottles, 10);
+
+        if (shots === 0) {
+          // Show 1 ghost preview Chamisul bottle when at 0 shots
+          bottlesRackHtml += `
+            <div class="chamisul-bottle-item is-empty-slot" title="아직 0잔 (첫 잔 대기 중)">
+              ${createChamisulBottleSvg(0, 1, SOJU_TIERS[0], false)}
+            </div>
+          `;
+        } else {
+          // Completed bottles (1 .. maxDisplayBottles)
+          for (let b = 1; b <= maxDisplayBottles; b++) {
+            const bTier = getSojuTierInfo(b);
+            const shouldPop = info.lastPopBottle === b;
+            bottlesRackHtml += `
+              <div class="chamisul-bottle-item is-full ${shouldPop ? 'pop-anim' : ''}" title="참이슬 ${b}병 클리어!">
+                ${createChamisulBottleSvg(1, b, bTier, false)}
+                <span class="bottle-num-tag">${b}병</span>
               </div>
-              <div class="drink-row-count">
-                <span class="drink-bottle-badge">${formatBottlesAndShots(shots, spb)}</span>
-                <span class="drink-shots-sub">(${formatShotCount(shots)}잔)</span>
+            `;
+          }
+
+          // Currently filling bottle (if partial shots exist)
+          if (currentBottleProgress > 0 && bottles < 12) {
+            const nextBottleNum = bottles + 1;
+            const nextTier = getSojuTierInfo(nextBottleNum);
+            const fillRatio = currentBottleProgress / spb;
+            bottlesRackHtml += `
+              <div class="chamisul-bottle-item is-filling" title="${nextBottleNum}병째 마시는 중 (${formatShotCount(currentBottleProgress)}/${spb}잔)">
+                ${createChamisulBottleSvg(fillRatio, nextBottleNum, nextTier, false)}
+                <span class="bottle-num-tag">${formatShotCount(currentBottleProgress)}/${spb}</span>
+              </div>
+            `;
+          }
+
+          if (bottles > 10) {
+            bottlesRackHtml += `
+              <span class="drink-tier-badge" style="align-self: center; margin-left: 0.2rem;">+${bottles - 10}병 더!</span>
+            `;
+          }
+        }
+
+        // Clear one-time pop flag after building HTML
+        if (info.lastPopBottle) {
+          info.lastPopBottle = 0;
+        }
+
+        row.innerHTML = `
+          <div class="drink-row-main">
+            <div class="drink-row-left">
+              <div class="drink-row-header">
+                <div class="drink-row-name-wrap">
+                  <span class="drink-member-name">${isHost ? '👑 ' : ''}${name}</span>
+                  ${isMvp ? '<span class="drink-mvp-crown">MVP</span>' : ''}
+                  <span class="drink-tier-badge">${tier.badge}</span>
+                </div>
+                <div class="drink-row-count">
+                  <span class="drink-bottle-badge">${formatBottlesAndShots(shots, spb)}</span>
+                  <span class="drink-shots-sub">(${formatShotCount(shots)}잔)</span>
+                </div>
+              </div>
+              <div class="soju-micro-gauge" style="grid-template-columns: repeat(${spb}, 1fr);">
+                ${segsHtml}
               </div>
             </div>
-            <div class="soju-micro-gauge" style="grid-template-columns: repeat(${spb}, 1fr);">
-              ${segsHtml}
+
+            <div class="drink-row-actions">
+              <button type="button" class="btn-shot-minus" data-name="${name}" ${shots <= 0 ? 'disabled' : ''} title="1잔 취소">-1</button>
+              <button type="button" class="btn-shot-half" data-name="${name}" title="반 잔 추가">+반</button>
+              <button type="button" class="btn-shot-plus ${tier.btnTextClass}" data-name="${name}">+1잔</button>
             </div>
           </div>
 
-          <div class="drink-row-actions">
-            <button type="button" class="btn-shot-minus" data-name="${name}" ${shots <= 0 ? 'disabled' : ''} title="1잔 취소">-1</button>
-            <button type="button" class="btn-shot-half" data-name="${name}" title="반 잔 추가">+반</button>
-            <button type="button" class="btn-shot-plus" data-name="${name}">+1잔</button>
+          <div class="drink-row-visual-tray">
+            <div class="chamisul-bottle-rack" aria-label="${name}님의 참이슬 병 나열">
+              ${bottlesRackHtml}
+            </div>
+            <div class="drink-row-quote">
+              <span class="quote-icon">💬</span>
+              <span class="quote-text">${quoteText}</span>
+            </div>
           </div>
         `;
 
         const plusBtn = row.querySelector('.btn-shot-plus');
-        plusBtn.addEventListener('click', () => addDrinkShots(name, 1));
+        plusBtn.addEventListener('click', (e) => addDrinkShots(name, 1, e.currentTarget));
 
         const halfBtn = row.querySelector('.btn-shot-half');
-        halfBtn.addEventListener('click', () => addDrinkShots(name, 0.5));
+        halfBtn.addEventListener('click', (e) => addDrinkShots(name, 0.5, e.currentTarget));
 
         const minusBtn = row.querySelector('.btn-shot-minus');
         minusBtn.addEventListener('click', () => addDrinkShots(name, -1));
@@ -1998,7 +2485,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (logs.length === 0) {
         drinkLiveLogs.innerHTML = `
           <div style="text-align: center; padding: 1.2rem 0.5rem; color: var(--text-muted); font-size: 0.8rem;">
-            아직 마신 기록이 없습니다. [+1잔 마심!]을 누르면 타임라인에 기록됩니다.
+            아직 마신 기록이 없습니다. [+1잔]을 누르면 타임라인에 기록됩니다.
           </div>
         `;
       } else {
@@ -2006,7 +2493,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const actionDesc = log.delta > 0
             ? `+${formatShotCount(log.delta)}잔 (누적 ${formatBottlesAndShots(log.totalShots, spb)})`
             : `${formatShotCount(log.delta)}잔 취소 (누적 ${formatBottlesAndShots(log.totalShots, spb)})`;
-          const milestoneBadge = log.isMilestone ? ` 🎉 <strong>${log.bottleNum}병 돌파!</strong>` : '';
+          const milestoneBadge = log.isMilestone ? ` 🎉 <strong>참이슬 ${log.bottleNum}병 돌파!</strong>` : '';
           return `
             <div class="drink-log-item ${log.isMilestone ? 'milestone-log' : ''}">
               <span>🍶 <strong>${log.name}</strong>님 ${actionDesc}${milestoneBadge}</span>
