@@ -1791,9 +1791,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const liquidY = 60 - liquidHeight;
 
     const svgClass = isLarge ? 'chamisul-svg-large' : 'chamisul-svg';
+    const svgW = isLarge ? 24 : 13;
+    const svgH = isLarge ? 46 : 26;
 
     return `
-      <svg class="${svgClass}" viewBox="0 0 28 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <svg class="${svgClass}" width="${svgW}" height="${svgH}" viewBox="0 0 28 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs>
           <clipPath id="${uid}">
             <path d="M10.5 3.5 H17.5 V15 C17.5 19.5 23.5 22.5 23.5 29 V57.5 C23.5 60 21.8 61.5 19.5 61.5 H8.5 C6.2 61.5 4.5 60 4.5 57.5 V29 C4.5 22.5 10.5 19.5 10.5 15 Z" />
@@ -1864,14 +1866,16 @@ document.addEventListener('DOMContentLoaded', () => {
     floatEl.textContent = text;
     floatEl.style.color = color;
 
-    const jitterX = (Math.random() - 0.5) * 24;
-    floatEl.style.left = `${rect.left + rect.width / 2 + jitterX}px`;
-    floatEl.style.top = `${rect.top - 6}px`;
+    const jitterX = (Math.random() - 0.5) * 14;
+    const rawX = rect.left + rect.width / 2 + jitterX;
+    const clampedX = Math.min(window.innerWidth - 68, Math.max(68, rawX));
+    floatEl.style.left = `${clampedX}px`;
+    floatEl.style.top = `${Math.max(16, rect.top - 6)}px`;
 
     fxLayer.appendChild(floatEl);
     setTimeout(() => {
       floatEl.remove();
-    }, 950);
+    }, 800);
   }
 
   function spawnSojuConfettiBurst(tierInfo) {
@@ -2335,16 +2339,25 @@ document.addEventListener('DOMContentLoaded', () => {
       drinkMembersCountBadge.textContent = `총 ${memberNames.length}명`;
     }
 
-    // Render Compact App-Style Member Rows with Chamisul Lineup & RPG Tier Styling
-    drinkMembersGrid.innerHTML = '';
-
+    // Render Compact App-Style Member Rows with In-Place DOM Update (Prevents Mobile Zoom/Highlight)
     if (memberNames.length === 0) {
       drinkMembersGrid.innerHTML = `
-        <div class="drink-member-row" style="justify-content: center; text-align: center; padding: 1.5rem 0.75rem; color: var(--text-muted); font-size: 0.8rem;">
+        <div class="drink-member-row" data-empty-row="true" style="justify-content: center; text-align: center; padding: 1.5rem 0.75rem; color: var(--text-muted); font-size: 0.8rem;">
           아직 참석자가 없습니다. 위 입력창이나 [정산 계산기]에서 인원을 추가하세요!
         </div>
       `;
     } else {
+      const emptyPlaceholder = drinkMembersGrid.querySelector('[data-empty-row]');
+      if (emptyPlaceholder) emptyPlaceholder.remove();
+
+      // Remove rows for members that were deleted
+      Array.from(drinkMembersGrid.querySelectorAll('.drink-member-row[data-member-row]')).forEach(el => {
+        const rowName = el.getAttribute('data-member-row');
+        if (!membersObj[rowName]) {
+          el.remove();
+        }
+      });
+
       memberNames.forEach(name => {
         const info = membersObj[name];
         const shots = Number(info.shots) || 0;
@@ -2356,12 +2369,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const tier = getSojuTierInfo(bottles);
         const quoteText = pickQuoteForMember(name, shots, spb, false);
 
-        const row = document.createElement('div');
         const specialTierClass = bottles >= 10 ? 'tier-god' : (bottles >= 5 ? 'tier-legendary' : '');
-        row.className = `drink-member-row ${bottles >= 1 ? 'has-bottle' : ''} ${isMvp ? 'is-mvp' : ''} ${specialTierClass}`.trim();
-        row.style.setProperty('--tier-color', tier.color);
-        row.style.setProperty('--tier-bg', tier.bg);
-        row.style.setProperty('--tier-border', tier.border);
+        const rowClassName = `drink-member-row ${bottles >= 1 ? 'has-bottle' : ''} ${isMvp ? 'is-mvp' : ''} ${specialTierClass}`.trim();
 
         // Build micro 8-segment gauge bar
         let segsHtml = '';
@@ -2371,102 +2380,136 @@ document.addEventListener('DOMContentLoaded', () => {
           segsHtml += `<span class="soju-micro-seg ${isFilled ? 'filled' : (isHalf ? 'half' : '')}"></span>`;
         }
 
-        // Build realistic Chamisul bottle lineup (1병 ~ 10병+)
+        // Build compact Chamisul bottle lineup (fixed height, no external text tags)
         let bottlesRackHtml = '';
-        const maxDisplayBottles = Math.min(bottles, 10);
+        const maxDisplayBottles = Math.min(bottles, 6);
 
         if (shots === 0) {
-          // Show 1 ghost preview Chamisul bottle when at 0 shots
           bottlesRackHtml += `
             <div class="chamisul-bottle-item is-empty-slot" title="아직 0잔 (첫 잔 대기 중)">
               ${createChamisulBottleSvg(0, 1, SOJU_TIERS[0], false)}
             </div>
           `;
         } else {
-          // Completed bottles (1 .. maxDisplayBottles)
           for (let b = 1; b <= maxDisplayBottles; b++) {
             const bTier = getSojuTierInfo(b);
             const shouldPop = info.lastPopBottle === b;
             bottlesRackHtml += `
               <div class="chamisul-bottle-item is-full ${shouldPop ? 'pop-anim' : ''}" title="참이슬 ${b}병 클리어!">
                 ${createChamisulBottleSvg(1, b, bTier, false)}
-                <span class="bottle-num-tag">${b}병</span>
               </div>
             `;
           }
 
-          // Currently filling bottle (if partial shots exist)
-          if (currentBottleProgress > 0 && bottles < 12) {
+          if (currentBottleProgress > 0 && bottles < 6) {
             const nextBottleNum = bottles + 1;
             const nextTier = getSojuTierInfo(nextBottleNum);
             const fillRatio = currentBottleProgress / spb;
             bottlesRackHtml += `
               <div class="chamisul-bottle-item is-filling" title="${nextBottleNum}병째 마시는 중 (${formatShotCount(currentBottleProgress)}/${spb}잔)">
                 ${createChamisulBottleSvg(fillRatio, nextBottleNum, nextTier, false)}
-                <span class="bottle-num-tag">${formatShotCount(currentBottleProgress)}/${spb}</span>
               </div>
             `;
           }
 
-          if (bottles > 10) {
+          if (bottles > 6) {
             bottlesRackHtml += `
-              <span class="drink-tier-badge" style="align-self: center; margin-left: 0.2rem;">+${bottles - 10}병 더!</span>
+              <span class="drink-tier-badge" style="align-self: center; margin-left: 2px;">+${bottles - 6}병</span>
             `;
           }
         }
 
-        // Clear one-time pop flag after building HTML
         if (info.lastPopBottle) {
           info.lastPopBottle = 0;
         }
 
-        row.innerHTML = `
-          <div class="drink-row-main">
-            <div class="drink-row-left">
-              <div class="drink-row-header">
-                <div class="drink-row-name-wrap">
-                  <span class="drink-member-name">${isHost ? '👑 ' : ''}${name}</span>
-                  ${isMvp ? '<span class="drink-mvp-crown">MVP</span>' : ''}
-                  <span class="drink-tier-badge">${tier.badge}</span>
+        let row = drinkMembersGrid.querySelector(`.drink-member-row[data-member-row="${CSS.escape(name)}"]`);
+        if (!row) {
+          row = document.createElement('div');
+          row.setAttribute('data-member-row', name);
+          row.innerHTML = `
+            <div class="drink-row-main">
+              <div class="drink-row-left">
+                <div class="drink-row-header">
+                  <div class="drink-row-name-wrap">
+                    <span class="drink-member-name"></span>
+                    <span class="drink-mvp-crown" style="display:none;">MVP</span>
+                    <span class="drink-tier-badge"></span>
+                  </div>
+                  <div class="drink-row-count">
+                    <span class="drink-bottle-badge"></span>
+                    <span class="drink-shots-sub"></span>
+                  </div>
                 </div>
-                <div class="drink-row-count">
-                  <span class="drink-bottle-badge">${formatBottlesAndShots(shots, spb)}</span>
-                  <span class="drink-shots-sub">(${formatShotCount(shots)}잔)</span>
-                </div>
+                <div class="soju-micro-gauge"></div>
               </div>
-              <div class="soju-micro-gauge" style="grid-template-columns: repeat(${spb}, 1fr);">
-                ${segsHtml}
+
+              <div class="drink-row-actions">
+                <button type="button" class="btn-shot-minus" title="1잔 취소">-1</button>
+                <button type="button" class="btn-shot-half" title="반 잔 추가">+반</button>
+                <button type="button" class="btn-shot-plus">+1잔</button>
               </div>
             </div>
 
-            <div class="drink-row-actions">
-              <button type="button" class="btn-shot-minus" data-name="${name}" ${shots <= 0 ? 'disabled' : ''} title="1잔 취소">-1</button>
-              <button type="button" class="btn-shot-half" data-name="${name}" title="반 잔 추가">+반</button>
-              <button type="button" class="btn-shot-plus ${tier.btnTextClass}" data-name="${name}">+1잔</button>
+            <div class="drink-row-visual-tray">
+              <div class="chamisul-bottle-rack"></div>
+              <div class="drink-row-quote">
+                <span class="quote-icon">💬</span>
+                <span class="quote-text"></span>
+              </div>
             </div>
-          </div>
+          `;
 
-          <div class="drink-row-visual-tray">
-            <div class="chamisul-bottle-rack" aria-label="${name}님의 참이슬 병 나열">
-              ${bottlesRackHtml}
-            </div>
-            <div class="drink-row-quote">
-              <span class="quote-icon">💬</span>
-              <span class="quote-text">${quoteText}</span>
-            </div>
-          </div>
-        `;
+          const plusBtn = row.querySelector('.btn-shot-plus');
+          plusBtn.addEventListener('click', (e) => addDrinkShots(name, 1, e.currentTarget));
 
-        const plusBtn = row.querySelector('.btn-shot-plus');
-        plusBtn.addEventListener('click', (e) => addDrinkShots(name, 1, e.currentTarget));
+          const halfBtn = row.querySelector('.btn-shot-half');
+          halfBtn.addEventListener('click', (e) => addDrinkShots(name, 0.5, e.currentTarget));
 
-        const halfBtn = row.querySelector('.btn-shot-half');
-        halfBtn.addEventListener('click', (e) => addDrinkShots(name, 0.5, e.currentTarget));
+          const minusBtn = row.querySelector('.btn-shot-minus');
+          minusBtn.addEventListener('click', () => addDrinkShots(name, -1));
+
+          drinkMembersGrid.appendChild(row);
+        }
+
+        // Update existing DOM nodes in-place without destroying buttons or shifting layout
+        row.className = rowClassName;
+        row.style.setProperty('--tier-color', tier.color);
+        row.style.setProperty('--tier-bg', tier.bg);
+        row.style.setProperty('--tier-border', tier.border);
+
+        const nameEl = row.querySelector('.drink-member-name');
+        if (nameEl) nameEl.textContent = `${isHost ? '👑 ' : ''}${name}`;
+
+        const mvpEl = row.querySelector('.drink-mvp-crown');
+        if (mvpEl) mvpEl.style.display = isMvp ? 'inline-block' : 'none';
+
+        const tierBadgeEl = row.querySelector('.drink-tier-badge');
+        if (tierBadgeEl) tierBadgeEl.textContent = tier.badge;
+
+        const bottleBadgeEl = row.querySelector('.drink-bottle-badge');
+        if (bottleBadgeEl) bottleBadgeEl.textContent = formatBottlesAndShots(shots, spb);
+
+        const shotsSubEl = row.querySelector('.drink-shots-sub');
+        if (shotsSubEl) shotsSubEl.textContent = `(${formatShotCount(shots)}잔)`;
+
+        const gaugeEl = row.querySelector('.soju-micro-gauge');
+        if (gaugeEl) {
+          gaugeEl.style.gridTemplateColumns = `repeat(${spb}, 1fr)`;
+          gaugeEl.innerHTML = segsHtml;
+        }
 
         const minusBtn = row.querySelector('.btn-shot-minus');
-        minusBtn.addEventListener('click', () => addDrinkShots(name, -1));
+        if (minusBtn) minusBtn.disabled = shots <= 0;
 
-        drinkMembersGrid.appendChild(row);
+        const plusBtn = row.querySelector('.btn-shot-plus');
+        if (plusBtn) plusBtn.className = `btn-shot-plus ${tier.btnTextClass}`;
+
+        const rackEl = row.querySelector('.chamisul-bottle-rack');
+        if (rackEl) rackEl.innerHTML = bottlesRackHtml;
+
+        const quoteEl = row.querySelector('.quote-text');
+        if (quoteEl) quoteEl.textContent = quoteText;
       });
     }
 
