@@ -1797,7 +1797,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const spb = (state.drinkTracker && state.drinkTracker.shotsPerBottle) || 8;
 
     if (hofMemberCountBadge) {
-      hofMemberCountBadge.textContent = `${encyclopedia.length}명 기록됨`;
+      hofMemberCountBadge.textContent = `${encyclopedia.length}명`;
     }
 
     // Render Frequent Members Quick-Add Chips in Drink Tracker
@@ -1808,14 +1808,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const unaddedFrequent = encyclopedia.filter(p => !currentDrinkNames.includes(p.name));
 
       if (unaddedFrequent.length > 0) {
-        drinkFrequentWrap.style.display = 'block';
+        drinkFrequentWrap.style.display = 'flex';
         drinkFrequentChips.innerHTML = '';
         unaddedFrequent.slice(0, 14).forEach(prof => {
           const chip = document.createElement('span');
           chip.className = 'recommend-chip';
           const maxTag = prof.maxShotsInOneMeeting > 0
-            ? ` (최고 ${formatBottlesAndShots(prof.maxShotsInOneMeeting, spb)})`
-            : ` (${prof.meetingsCount}회 참석)`;
+            ? ` (${formatBottlesAndShots(prof.maxShotsInOneMeeting, spb)})`
+            : '';
           chip.textContent = `+ ${prof.name}${maxTag}`;
           chip.addEventListener('click', () => {
             addMemberFromDrinkTracker(prof.name);
@@ -1898,37 +1898,31 @@ document.addEventListener('DOMContentLoaded', () => {
       drinkTotalBottlesStat.textContent = formatBottlesAndShots(totalShots, spb);
     }
     if (drinkTotalShotsStat) {
-      drinkTotalShotsStat.textContent = `(총 ${formatShotCount(totalShots)}잔)`;
+      drinkTotalShotsStat.textContent = `(${formatShotCount(totalShots)}잔)`;
     }
     if (drinkMvpStat) {
       drinkMvpStat.textContent = mvpNames.length > 0
-        ? `${mvpNames.join(', ')} (${formatBottlesAndShots(maxShots, spb)})`
-        : '아직 없음';
+        ? `${mvpNames.join(', ')}`
+        : '-';
     }
     if (drinkAvgStat) {
       const avgShots = activeDrinkersCount > 0 ? Number((totalShots / activeDrinkersCount).toFixed(1)) : 0;
       drinkAvgStat.textContent = formatBottlesAndShots(avgShots, spb);
     }
     if (drinkActiveCountStat) {
-      drinkActiveCountStat.textContent = `(${activeDrinkersCount}명 음주 / 총 ${memberNames.length}명)`;
+      drinkActiveCountStat.textContent = `${activeDrinkersCount}명 음주`;
     }
     if (drinkMembersCountBadge) {
-      drinkMembersCountBadge.textContent = `${memberNames.length}명`;
+      drinkMembersCountBadge.textContent = `총 ${memberNames.length}명`;
     }
 
-    // Render Member Cards
+    // Render Compact App-Style Member Rows
     drinkMembersGrid.innerHTML = '';
 
     if (memberNames.length === 0) {
       drinkMembersGrid.innerHTML = `
-        <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
-          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🍶</div>
-          <p style="font-size: 0.92rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.25rem;">
-            아직 등록된 술자리 참석자가 없습니다!
-          </p>
-          <p style="font-size: 0.8rem;">
-            위 입력창에서 참석자를 추가하거나 [💰 정산 계산기] 탭에서 차수별 참석자를 입력하면 자동으로 이곳에 연동됩니다.
-          </p>
+        <div class="drink-member-row" style="justify-content: center; text-align: center; padding: 1.5rem 0.75rem; color: var(--text-muted); font-size: 0.8rem;">
+          아직 참석자가 없습니다. 위 입력창이나 [정산 계산기]에서 인원을 추가하세요!
         </div>
       `;
     } else {
@@ -1939,78 +1933,53 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentBottleProgress = shots - (bottles * spb);
         const isMvp = maxShots > 0 && shots === maxShots;
         const isHost = state.hostName === name;
-        const pastProf = profMap[name];
 
-        const card = document.createElement('div');
-        card.className = `drink-member-card ${bottles >= 1 ? 'has-bottle' : ''} ${isMvp ? 'is-mvp' : ''}`;
+        const row = document.createElement('div');
+        row.className = `drink-member-row ${bottles >= 1 ? 'has-bottle' : ''} ${isMvp ? 'is-mvp' : ''}`;
 
-        let recordHint = '오늘 첫 기록 대기 중';
-        if (pastProf && pastProf.maxShotsInOneMeeting > 0) {
-          recordHint = `역대 최고: ${formatBottlesAndShots(pastProf.maxShotsInOneMeeting, spb)}`;
-        } else if (shots > 0) {
-          recordHint = `${spb}잔마다 1병 알림 울림`;
-        }
-
-        // Build visual glasses slots for 1 bottle (spb slots)
-        let glassesHtml = '';
+        // Build micro 8-segment gauge bar
+        let segsHtml = '';
         for (let i = 1; i <= spb; i++) {
           const isFilled = currentBottleProgress >= i || (currentBottleProgress === 0 && bottles > 0 && shots > 0 && (shots % spb === 0));
           const isHalf = !isFilled && (currentBottleProgress >= i - 0.5);
-          glassesHtml += `
-            <div class="soju-glass-slot ${isFilled || isHalf ? 'filled' : ''}" title="${i}잔째">
-              ${isFilled ? '🍶' : (isHalf ? '🥛' : i)}
-            </div>
-          `;
+          segsHtml += `<span class="soju-micro-seg ${isFilled ? 'filled' : (isHalf ? 'half' : '')}"></span>`;
         }
 
-        const gaugeStatusText = bottles > 0 && (shots % spb === 0)
-          ? `🍾 ${bottles}병 딱 클리어!`
-          : `${bottles + 1}병째 진행 중 (${formatShotCount(currentBottleProgress)}/${spb}잔)`;
-
-        card.innerHTML = `
-          <div class="drink-card-top">
-            <div class="drink-member-info">
-              <div class="drink-member-name-row">
+        row.innerHTML = `
+          <div class="drink-row-left">
+            <div class="drink-row-header">
+              <div class="drink-row-name-wrap">
                 <span class="drink-member-name">${isHost ? '👑 ' : ''}${name}</span>
-                ${isMvp ? '<span class="drink-mvp-crown">🏆 주당 1위</span>' : ''}
+                ${isMvp ? '<span class="drink-mvp-crown">MVP</span>' : ''}
+                ${bottles > 0 ? `<span class="drink-bottle-pill-mini">🍾×${bottles}</span>` : ''}
               </div>
-              <span class="drink-member-record-hint">${recordHint}</span>
+              <div class="drink-row-count">
+                <span class="drink-bottle-badge">${formatBottlesAndShots(shots, spb)}</span>
+                <span class="drink-shots-sub">(${formatShotCount(shots)}잔)</span>
+              </div>
             </div>
-            <div class="drink-card-count-box">
-              <span class="drink-bottle-badge">${formatBottlesAndShots(shots, spb)}</span>
-              <span class="drink-shots-sub">총 ${formatShotCount(shots)}잔</span>
-            </div>
-          </div>
-
-          <div class="soju-gauge-wrap">
-            <div class="soju-gauge-header">
-              <span>${gaugeStatusText}</span>
-              ${bottles > 0 ? `<span class="soju-completed-bottles">${'🍾'.repeat(Math.min(bottles, 5))} ${bottles}병 돌파</span>` : ''}
-            </div>
-            <div class="soju-glasses-row" style="grid-template-columns: repeat(${spb}, 1fr);">
-              ${glassesHtml}
+            <div class="soju-micro-gauge" style="grid-template-columns: repeat(${spb}, 1fr);">
+              ${segsHtml}
             </div>
           </div>
 
-          <div class="drink-card-actions">
+          <div class="drink-row-actions">
             <button type="button" class="btn-shot-minus" data-name="${name}" ${shots <= 0 ? 'disabled' : ''} title="1잔 취소">-1</button>
-            <button type="button" class="btn-shot-half" data-name="${name}" title="반 잔(꺾기) 추가">+반잔</button>
-            <button type="button" class="btn-shot-plus" data-name="${name}">
-              <span>🍶 +1잔 마심!</span>
-            </button>
+            <button type="button" class="btn-shot-half" data-name="${name}" title="반 잔 추가">+반</button>
+            <button type="button" class="btn-shot-plus" data-name="${name}">+1잔</button>
           </div>
         `;
 
-        const plusBtn = card.querySelector('.btn-shot-plus');
+        const plusBtn = row.querySelector('.btn-shot-plus');
         plusBtn.addEventListener('click', () => addDrinkShots(name, 1));
 
-        const halfBtn = card.querySelector('.btn-shot-half');
+        const halfBtn = row.querySelector('.btn-shot-half');
         halfBtn.addEventListener('click', () => addDrinkShots(name, 0.5));
 
-        const minusBtn = card.querySelector('.btn-shot-minus');
+        const minusBtn = row.querySelector('.btn-shot-minus');
         minusBtn.addEventListener('click', () => addDrinkShots(name, -1));
 
-        drinkMembersGrid.appendChild(card);
+        drinkMembersGrid.appendChild(row);
       });
     }
 
